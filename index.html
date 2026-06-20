@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#00B39F">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Career Records">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Career Records</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=34">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="#dashboard" aria-label="Career Records dashboard">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 36 36" role="img">
+          <rect x="4" y="4" width="28" height="28" rx="7"></rect>
+          <path d="M11 13h14M11 18h14M11 23h8"></path>
+          <circle cx="25" cy="23" r="3"></circle>
+        </svg>
+      </span>
+      <span>
+        <strong>Career Records</strong>
+        <small>Lloyd Ramirez</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Workbook views">
+      <a href="#dashboard" class="active" data-view="dashboard">Dashboard</a>
+      <details class="nav-group" open>
+        <summary>Pr1me Log</summary>
+        <a href="#sessions" data-view="sessions">Record Log</a>
+        <a href="#packages" data-view="packages">Per Package</a>
+        <a href="#students" data-view="students">Per Student</a>
+      </details>
+      <a href="#schedule" data-view="schedule">Schedule</a>
+      <details class="nav-group">
+        <summary>Summary</summary>
+        <a href="#summary" data-view="summary">Analytics</a>
+        <a href="#claiming" data-view="claiming">Claiming View</a>
+        <a href="#archive" data-view="archive">Claiming History</a>
+      </details>
+      <details class="nav-group personal-nav">
+        <summary>Personal</summary>
+        <a href="#personal-sessions" data-view="personal-sessions">Record Log</a>
+        <a href="#personal-packages" data-view="personal-packages">Per Package</a>
+        <a href="#personal-students" data-view="personal-students">Per Student</a>
+      </details>
+      <a href="#rates" data-view="rates">Rates</a>
+      <a href="#settings" data-view="settings">Settings</a>
+      <details class="nav-group records-nav">
+        <summary>Records</summary>
+        <a href="#records-add" data-view="records-add">Add Record</a>
+        <a href="#resume" data-view="resume">Resume</a>
+        <a href="#cv" data-view="cv">Curriculum Vitae</a>
+      </details>
+    </nav>
+  </aside>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="topbar-title">
+        <button class="icon-button menu-toggle" id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+        </button>
+        <div>
+          <p class="eyebrow">Workbook</p>
+          <h1 id="viewTitle">Dashboard</h1>
+        </div>
+      </div>
+      <div class="filters">
+        <label>
+          <span>Month</span>
+          <input type="month" id="monthFilter">
+        </label>
+        <button class="icon-button" id="printView" type="button" title="Print current view" aria-label="Print current view">
+          <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="view active" id="dashboard" data-title="Dashboard">
+      <div class="metric-grid" id="dashboardMetrics"></div>
+      <div class="split">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Monthly Earnings</h2>
+          </div>
+          <div class="bar-chart" id="monthlyChart"></div>
+        </section>
+        <div class="dashboard-side">
+          <section class="panel average-panel">
+            <div class="panel-head">
+              <h2>Daily Average</h2>
+            </div>
+            <div class="average-grid" id="averageMetrics"></div>
+          </section>
+          <section class="panel status-panel">
+            <div class="panel-head">
+              <h2>Status Balance</h2>
+            </div>
+            <div class="status-stack" id="statusStack"></div>
+          </section>
+        </div>
+      </div>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Peak Days</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Day</th><th>Sessions</th><th>Hours</th><th>Earnings</th></tr></thead>
+            <tbody id="peakDays"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Unclaimed By Student</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student / Program</th><th>Logs</th><th>Hours</th><th>For Claiming</th><th>Open</th><th>Total Unclaimed</th></tr></thead>
+            <tbody id="unclaimedStudentRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="sessions" data-title="Pr1me Log">
+      <section class="panel form-panel">
+        <div class="panel-head">
+          <h2>Record Pr1me Session</h2>
+          <button class="ghost soft-danger" id="clearSessionForm" type="button">Clear</button>
+        </div>
+        <form class="grid-form session-form-grid" id="sessionForm">
+          <input type="hidden" id="sessionId">
+          <label><span>Date</span><input id="sessionDate" type="date" required></label>
+          <label><span>Start</span><input id="sessionStart" type="time" required></label>
+          <label><span>End</span><input id="sessionEnd" type="time" required></label>
+          <input type="hidden" id="sessionTutor" value="Lloyd Ramirez">
+          <label><span>Student / Program</span><input id="sessionStudent" list="activeStudentOptions" required placeholder="Type or select"></label>
+          <datalist id="activeStudentOptions"></datalist>
+          <label><span>Package / Batch</span><select id="sessionPackage"></select></label>
+          <label><span>Claim Package</span><select id="sessionClaimPackage"></select></label>
+          <label><span>Class Type</span><select id="sessionClassType"></select></label>
+          <label><span>Mode</span><select id="sessionMode"></select></label>
+          <label><span>Students</span><input id="sessionStudents" type="number" min="1" value="1"></label>
+          <label><span>Rate per Hour</span><input id="sessionRate" type="number" min="0" step="0.01"></label>
+          <label><span># of Hours</span><input id="sessionHours" type="number" min="0" step="0.01" required></label>
+          <label class="wide"><span>Notes</span><input id="sessionNotes" type="text" placeholder="Optional"></label>
+          <button class="primary" type="submit">Record Session</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Master Pr1me Log</h2>
+          <div class="actions log-actions">
+            <label>
+              <span>Sort By</span>
+              <select id="sessionSortBy">
+                <option value="date" selected>Date</option>
+                <option value="name">Name</option>
+                <option value="type">Type</option>
+              </select>
+            </label>
+            <label>
+              <span>Order</span>
+              <select id="sessionSortDirection">
+                <option value="asc">Ascending: A-Z / earliest first</option>
+                <option value="desc" selected>Descending: Z-A / recent first</option>
+              </select>
+            </label>
+            <button class="ghost" id="exportSessionsCsv" type="button">Export CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th></th><th>Date</th><th>Package</th><th>Time</th><th>Student</th><th>Type</th><th>Mode</th><th>Hours</th><th>Rate</th><th>Total Pay</th><th></th></tr>
+            </thead>
+            <tbody id="sessionRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="schedule" data-title="Schedule">
+      <section class="panel">
+        <div class="panel-head"><h2>Weekly Schedule</h2></div>
+        <div class="week-grid" id="weekGrid"></div>
+      </section>
+      <section class="panel form-panel">
+        <div class="panel-head">
+          <h2>Add Schedule</h2>
+          <button class="ghost" id="clearScheduleForm" type="button">Clear</button>
+        </div>
+        <form class="grid-form" id="scheduleForm">
+          <input type="hidden" id="scheduleId">
+          <label><span>Day</span><select id="scheduleDay"></select></label>
+          <label><span>Start</span><input id="scheduleStart" type="time" required></label>
+          <label><span>End</span><input id="scheduleEnd" type="time" required></label>
+          <label><span>Student / Program</span><select id="scheduleStudent"></select></label>
+          <input type="hidden" id="scheduleTutor" value="Lloyd Ramirez">
+          <label><span>Mode</span><select id="scheduleMode"></select></label>
+          <label><span>Frequency</span><select id="scheduleFrequency"></select></label>
+          <label><span>Status</span><select id="scheduleStatus"></select></label>
+          <label class="wide"><span>Notes</span><input id="scheduleNotes" type="text" placeholder="Optional"></label>
+          <button class="primary" type="submit">Save Schedule</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Schedule Table</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Day</th><th>Time</th><th>Student</th><th>Mode</th><th>Frequency</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+            <tbody id="scheduleRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="rates" data-title="Rates">
+      <section class="panel form-panel">
+        <div class="panel-head"><h2>Add Rate</h2></div>
+        <form class="grid-form" id="rateForm">
+          <input type="hidden" id="rateId">
+          <label><span>Tutor</span><select id="rateTutor"></select></label>
+          <label><span>Class Type</span><select id="rateClassType"></select></label>
+          <label><span>Mode</span><select id="rateMode"></select></label>
+          <label><span>Package / Batch</span><select id="ratePackage"></select></label>
+          <label><span>Rate per Hour</span><input id="rateAmount" type="number" min="0" step="0.01" required></label>
+          <button class="primary" type="submit">Save Rate</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Rate Reference</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tutor</th><th>Class Type</th><th>Mode</th><th>Package</th><th>Rate</th><th></th></tr></thead>
+            <tbody id="rateRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="packages" data-title="Per Package">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Per Package</h2>
+          <div class="actions package-actions">
+            <label>
+              <span>Search</span>
+              <input id="packageSearch" type="search" placeholder="Student or package">
+            </label>
+            <label>
+              <span>Claim Date</span>
+              <input id="packageClaimDate" type="date">
+            </label>
+            <button class="success" id="closeSelectedPackages" type="button">Close</button>
+            <button class="ghost" id="reopenSelectedPackages" type="button">Open</button>
+          </div>
+        </div>
+        <div class="package-board" id="packageBoard"></div>
+      </section>
+    </section>
+
+    <section class="view printable" id="claiming" data-title="Claiming View">
+      <section class="panel release-panel">
+        <div class="release-head">
+          <div>
+            <p class="eyebrow">Salary Release</p>
+            <h2>Claiming View</h2>
+          </div>
+          <div class="claim-meta">
+            <label><span>Claim Date</span><input type="date" id="claimDate"></label>
+            <button class="ghost" id="exportClaimCsv" type="button">Export CSV</button>
+            <button class="primary" id="markClaimed" type="button">Claim All</button>
+          </div>
+        </div>
+        <div class="metric-grid small" id="claimMetrics"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Student</th><th>Hours</th><th>Rate</th><th>Total Pay</th></tr></thead>
+            <tbody id="claimRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="archive" data-title="Claiming History">
+      <section class="panel">
+        <div class="panel-head"><h2>Claimed Sessions Archive</h2></div>
+        <div class="metric-grid small" id="archiveMetrics"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Claim Date</th><th>Student / Period</th><th>Sessions / Logs</th><th>Total Claimed</th></tr></thead>
+            <tbody id="archiveRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="students" data-title="Collated Per Student">
+      <div class="group-list" id="studentGroups"></div>
+    </section>
+
+    <section class="view personal-view" id="personal-sessions" data-title="Personal Record Log">
+      <section class="panel form-panel">
+        <div class="panel-head">
+          <h2>Record Personal Session</h2>
+          <button class="ghost soft-danger" id="clearPersonalSessionForm" type="button">Clear</button>
+        </div>
+        <form class="grid-form session-form-grid" id="personalSessionForm">
+          <input type="hidden" id="personalSessionId">
+          <label><span>Date</span><input id="personalSessionDate" type="date" required></label>
+          <label><span>Start</span><input id="personalSessionStart" type="time" required></label>
+          <label><span>End</span><input id="personalSessionEnd" type="time" required></label>
+          <label><span>Student</span><input id="personalSessionStudent" list="personalStudentOptions" required placeholder="Type or select"></label>
+          <datalist id="personalStudentOptions"></datalist>
+          <label><span>Package</span><select id="personalSessionPackage"></select></label>
+          <label><span>Class Type</span><select id="personalSessionClassType"></select></label>
+          <label><span>Mode</span><select id="personalSessionMode"></select></label>
+          <label><span>Rate per Hour</span><input id="personalSessionRate" type="number" min="0" step="0.01"></label>
+          <label><span># of Hours</span><input id="personalSessionHours" type="number" min="0" step="0.01" required></label>
+          <label class="wide"><span>Notes</span><input id="personalSessionNotes" type="text" placeholder="Optional"></label>
+          <button class="primary personal-primary" type="submit">Record Session</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Personal Session Log</h2>
+          <button class="ghost" id="exportPersonalCsv" type="button">Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Package</th><th>Time</th><th>Student</th><th>Type</th><th>Mode</th><th>Hours</th><th>Rate</th><th>Total Pay</th><th></th></tr></thead>
+            <tbody id="personalSessionRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view personal-view" id="personal-packages" data-title="Personal Per Package">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Personal Per Package</h2>
+          <div class="actions package-actions">
+            <label><span>Search</span><input id="personalPackageSearch" type="search" placeholder="Student or package"></label>
+            <button class="success personal-primary" id="closePersonalPackages" type="button">Close</button>
+            <button class="ghost" id="openPersonalPackages" type="button">Open</button>
+          </div>
+        </div>
+        <div class="package-board" id="personalPackageBoard"></div>
+      </section>
+    </section>
+
+    <section class="view personal-view" id="personal-students" data-title="Personal Per Student">
+      <div class="group-list" id="personalStudentGroups"></div>
+    </section>
+
+    <section class="view" id="summary" data-title="Analytics">
+      <div class="metric-grid summary-stats" id="summaryStats"></div>
+      <section class="panel form-panel">
+        <div class="panel-head">
+          <h2>Summary Filters</h2>
+        </div>
+        <form class="grid-form summary-controls" id="summaryControls">
+          <label><span>Year</span><select id="summaryYear"></select></label>
+          <label><span>Month</span><select id="summaryMonth"></select></label>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Daily Summary</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Day</th><th>Sessions</th><th>Hours</th><th>Earnings</th><th>Claimed</th><th>Unclaimed</th></tr></thead>
+            <tbody id="dailyRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Monthly Summary</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Month</th><th>Sessions</th><th>Hours</th><th>Earnings</th><th>Avg Rate</th><th>Avg Session</th><th>Claimed</th><th>Unclaimed</th><th>For Claiming</th></tr></thead>
+            <tbody id="monthlyRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="settings" data-title="Settings">
+      <section class="panel form-panel">
+        <div class="panel-head"><h2>Dropdown Lists</h2></div>
+        <form class="settings-grid" id="settingsForm">
+          <label><span>Tutors</span><textarea id="settingTutors" rows="7"></textarea></label>
+          <label><span>Students / Programs</span><textarea id="settingStudents" rows="7"></textarea></label>
+          <label><span>Packages / Batches</span><textarea id="settingPackages" rows="7"></textarea></label>
+          <label><span>Class Types</span><textarea id="settingClassTypes" rows="7"></textarea></label>
+          <label><span>Modes</span><textarea id="settingModes" rows="7"></textarea></label>
+          <label><span>Schedule Statuses</span><textarea id="settingScheduleStatuses" rows="7"></textarea></label>
+          <button class="primary" type="submit">Save Settings</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Student Status</h2>
+          <button class="success" id="inactiveExceptOpen" type="button">Active Open Only</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student / Program</th><th>Status</th><th>Notes</th></tr></thead>
+            <tbody id="studentStatusRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Data</h2></div>
+        <div class="cloud-sync-box">
+          <div>
+            <strong>Cloud Sync</strong>
+            <span id="cloudSyncStatus">Local browser save only</span>
+          </div>
+          <button class="ghost" id="syncCloudNow" type="button">Sync Now</button>
+        </div>
+        <div class="actions wrap data-actions">
+          <button class="ghost" id="exportJson" type="button">Download Backup</button>
+          <label class="file-button">Load Backup<input id="importJson" type="file" accept="application/json"></label>
+          <button class="danger" id="resetDemo" type="button">Reset Demo Data</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="view records-view" id="records-add" data-title="Add Record">
+      <section class="panel form-panel">
+        <div class="panel-head">
+          <h2>Add Credential Record</h2>
+          <button class="ghost soft-danger" id="clearRecordForm" type="button">Clear</button>
+        </div>
+        <form class="grid-form records-form" id="recordForm">
+          <input type="hidden" id="recordId">
+          <label><span>Start Date</span><input id="recordStartDate" type="month"></label>
+          <label><span>End Date</span><input id="recordEndDate" type="month"></label>
+          <label><span>CV Section</span><select id="recordCategory">
+            <option value=""></option>
+            <option>Summary</option>
+            <option>Education</option>
+            <option>Licenses and Certifications</option>
+            <option>Works</option>
+            <option>Work Experience</option>
+            <option>Skills</option>
+            <option>Affiliations and Leadership</option>
+            <option>Records Only</option>
+          </select></label>
+          <label><span>Title</span><input id="recordTitle" type="text" required placeholder="Credential, role, award, or training"></label>
+          <label><span>Organization</span><input id="recordOrganization" type="text" placeholder="School, company, issuer"></label>
+          <label><span>Location</span><input id="recordLocation" type="text" placeholder="Optional"></label>
+          <label><span>Attachment / Documents</span><input id="recordFileInput" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.txt"></label>
+          <input type="hidden" id="recordFile">
+          <input type="hidden" id="recordFileData">
+          <label><span>Description</span><textarea id="recordDescription" rows="3" placeholder="Professional description or credential details"></textarea></label>
+          <label><span>Bullet Details</span><textarea id="recordBullets" rows="3" placeholder="One bullet per line"></textarea></label>
+          <button class="primary" type="submit">Save Record</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Credential Records</h2></div>
+        <div class="records-list" id="recordsList"></div>
+      </section>
+    </section>
+
+    <section class="view records-view printable" id="resume" data-title="Resume">
+      <section class="panel resume-toolbar no-print">
+        <div class="panel-head">
+          <h2>Resume Builder</h2>
+          <button class="ghost soft-danger" id="clearResume" type="button">Clear Resume</button>
+        </div>
+      </section>
+      <section class="document-page resume-page">
+        <div class="document-head">
+          <div>
+            <p class="eyebrow">Resume</p>
+            <h2 id="resumeDocumentName">Lloyd Ramirez</h2>
+            <p id="resumeDocumentHeadline">Educator and tutor</p>
+            <p class="document-place" id="resumeDocumentPlace"></p>
+            <p class="document-contact" id="resumeDocumentContact"></p>
+          </div>
+          <img class="profile-photo" data-profile-photo alt="2x2 profile photo">
+        </div>
+        <div id="resumeContent"></div>
+      </section>
+    </section>
+
+    <section class="view records-view printable" id="cv" data-title="Curriculum Vitae">
+      <div class="cv-builder-grid no-print">
+        <section class="panel cv-controls">
+          <div class="panel-head">
+            <h2>CV Builder</h2>
+            <div class="actions">
+              <button class="ghost" id="toggleCvSelect" type="button">Select Details</button>
+              <button class="primary" id="addSelectedToResume" type="button">Add to Resume</button>
+            </div>
+          </div>
+          <form class="grid-form records-form" id="cvProfileForm">
+            <label><span>Display Name</span><input id="cvDisplayName" type="text"></label>
+            <label><span>Headline</span><input id="cvHeadline" type="text"></label>
+            <label class="wide"><span>Place</span><input id="cvPlace" type="text"></label>
+            <label class="wide"><span>Contact</span><input id="cvContact" type="text"></label>
+            <button class="primary compact-action" id="updateCvProfile" type="button">Update CV</button>
+          </form>
+        </section>
+        <section class="panel cv-detail-editor">
+          <div class="panel-head">
+            <h2>Detail Editor</h2>
+            <button class="ghost" id="clearCvDetailEditor" type="button">Clear</button>
+          </div>
+          <form class="grid-form records-form" id="cvDetailForm">
+            <input type="hidden" id="cvDetailEditingSection">
+            <input type="hidden" id="cvDetailEditingId">
+            <label><span>Section</span><select id="cvDetailSection">
+              <option value=""></option>
+              <option value="summary">Summary</option>
+              <option value="education">Education</option>
+              <option value="licenses-and-certifications">Licenses and Certifications</option>
+              <option value="works">Works</option>
+              <option value="work-experience">Work Experience</option>
+              <option value="skills">Skills</option>
+              <option value="affiliations-and-leadership">Affiliations and Leadership</option>
+            </select></label>
+            <label><span>Title</span><input id="cvDetailTitle" type="text"></label>
+            <label><span>Date</span><input id="cvDetailDate" type="text"></label>
+            <label><span>Organization / Place</span><input id="cvDetailMeta" type="text"></label>
+            <label class="wide"><span>Description</span><textarea id="cvDetailDescription" rows="2"></textarea></label>
+            <label class="wide"><span>Bullet Details</span><textarea id="cvDetailBullets" rows="4"></textarea></label>
+            <button class="primary compact-action" id="saveCvDetail" type="submit">Update Detail</button>
+          </form>
+        </section>
+      </div>
+      <section class="document-page cv-page">
+        <div class="document-head">
+          <div>
+            <p class="eyebrow">Curriculum Vitae</p>
+            <h2 id="cvDocumentName">Lloyd Ramirez</h2>
+            <p id="cvDocumentHeadline">Academic and professional credentials</p>
+            <p class="document-place" id="cvDocumentPlace"></p>
+            <p class="document-contact" id="cvDocumentContact"></p>
+          </div>
+          <img class="profile-photo" data-profile-photo alt="2x2 profile photo">
+        </div>
+        <div id="cvContent"></div>
+      </section>
+      <section class="panel attachments-panel no-print">
+        <div class="panel-head"><h2>Attached Files</h2></div>
+        <div class="records-list" id="cvAttachments"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="workbook-data.js?v=9"></script>
+  <script src="script.js?v=67"></script>
+</body>
+</html>

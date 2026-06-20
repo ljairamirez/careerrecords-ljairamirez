@@ -1,0 +1,10 @@
+{
+  "name": "Career Records",
+  "short_name": "Career Records",
+  "description": "Lloyd Ramirez salary sheet tracker",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f8ff",
+  "theme_color": "#00B39F"
+}
