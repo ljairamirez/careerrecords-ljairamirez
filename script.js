@@ -458,6 +458,7 @@ const defaultState = {
   ]
 };
 
+const hadLocalStateAtStartup = hasStoredState();
 let state = loadState();
 let recentlyClaimedPackageKeys = new Set();
 let cvSelectionMode = false;
@@ -495,6 +496,14 @@ function isoDaysAgo(daysAgo) {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   return date.toISOString().slice(0, 10);
+}
+
+function hasStoredState() {
+  try {
+    return Boolean(localStorage.getItem(STORAGE_KEY));
+  } catch (error) {
+    return false;
+  }
 }
 
 function loadState() {
@@ -671,13 +680,19 @@ async function initializeCloudSync() {
     if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud sync failed"));
     const payload = await response.json();
     if (payload?.state) {
-      state = migrateState(payload.state);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const remoteState = migrateState(payload.state);
       cloudSync.lastSavedAt = payload.updatedAt || "";
-      cloudSync.dirty = false;
-      hydrateControls();
-      render();
-      migrateLegacyRecordAttachments();
+      if (hadLocalStateAtStartup && localSessionHistoryIsAhead(state, remoteState)) {
+        cloudSync.dirty = true;
+        await syncCloudSave(true);
+      } else {
+        state = remoteState;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        cloudSync.dirty = false;
+        hydrateControls();
+        render();
+        migrateLegacyRecordAttachments();
+      }
     } else {
       await syncCloudSave(true);
     }
@@ -691,6 +706,13 @@ async function initializeCloudSync() {
     if (cloudSync.dirty) queueCloudSave();
     renderCloudStatus();
   }
+}
+
+function localSessionHistoryIsAhead(localState, remoteState) {
+  const localRows = (localState?.sessions || []).filter(hasUsableDate);
+  const remoteRows = (remoteState?.sessions || []).filter(hasUsableDate);
+  const latest = (rows) => rows.reduce((date, row) => row.date > date ? row.date : date, "");
+  return localRows.length > remoteRows.length || latest(localRows) > latest(remoteRows);
 }
 
 function queueCloudSave() {
