@@ -2,6 +2,7 @@ const STORAGE_KEY = "salary-sheet-state-v5";
 const CLOUD_STATE_ENDPOINT = "/api/salary-state";
 const CLOUD_FILE_ENDPOINT = "/api/record-file";
 const CLOUD_SYNC_DEBOUNCE_MS = 900;
+const CLOUD_REFRESH_MS = 15000;
 const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
@@ -467,7 +468,10 @@ let cloudSync = {
   saving: false,
   error: "",
   lastSavedAt: "",
-  timer: null
+  timer: null,
+  refreshTimer: null,
+  refreshStarted: false,
+  dirty: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -638,6 +642,7 @@ function migrateState(inputState) {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  cloudSync.dirty = true;
   queueCloudSave();
 }
 
@@ -663,12 +668,13 @@ async function initializeCloudSync() {
 
   try {
     const response = await fetch(CLOUD_STATE_ENDPOINT, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Cloud sync failed: ${response.status}`);
+    if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud sync failed"));
     const payload = await response.json();
     if (payload?.state) {
       state = migrateState(payload.state);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       cloudSync.lastSavedAt = payload.updatedAt || "";
+      cloudSync.dirty = false;
       hydrateControls();
       render();
       migrateLegacyRecordAttachments();
@@ -677,10 +683,12 @@ async function initializeCloudSync() {
     }
     await syncPendingRecordAttachments();
   } catch (error) {
-    cloudSync.error = "Cloud sync unavailable";
+    cloudSync.error = error.message || "Cloud sync unavailable";
     console.warn("Cloud sync unavailable.", error);
   } finally {
     cloudSync.loading = false;
+    startCloudRefresh();
+    if (cloudSync.dirty) queueCloudSave();
     renderCloudStatus();
   }
 }
@@ -703,15 +711,58 @@ async function syncCloudSave(force = false) {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ state })
     });
-    if (!response.ok) throw new Error(`Cloud save failed: ${response.status}`);
+    if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud save failed"));
     const payload = await response.json();
     cloudSync.lastSavedAt = payload.updatedAt || new Date().toISOString();
+    cloudSync.dirty = false;
   } catch (error) {
-    cloudSync.error = "Cloud save failed";
+    cloudSync.error = error.message || "Cloud save failed";
     console.warn("Cloud save failed.", error);
   } finally {
     cloudSync.saving = false;
     renderCloudStatus();
+  }
+}
+
+function startCloudRefresh() {
+  if (!cloudSync.enabled || cloudSync.refreshStarted) return;
+  cloudSync.refreshStarted = true;
+  cloudSync.refreshTimer = window.setInterval(refreshCloudState, CLOUD_REFRESH_MS);
+  window.addEventListener("focus", refreshCloudState);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshCloudState();
+  });
+}
+
+async function refreshCloudState() {
+  if (!cloudSync.enabled || cloudSync.loading || cloudSync.saving || cloudSync.dirty || document.hidden) return;
+  try {
+    const response = await fetch(CLOUD_STATE_ENDPOINT, {
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+    if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud refresh failed"));
+    const payload = await response.json();
+    if (!payload?.state || !payload.updatedAt || payload.updatedAt === cloudSync.lastSavedAt) return;
+    state = migrateState(payload.state);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    cloudSync.lastSavedAt = payload.updatedAt;
+    cloudSync.error = "";
+    hydrateControls();
+    render();
+    renderCloudStatus();
+  } catch (error) {
+    cloudSync.error = error.message || "Cloud refresh failed";
+    renderCloudStatus();
+  }
+}
+
+async function cloudResponseError(response, fallback) {
+  try {
+    const payload = await response.json();
+    return payload.error || `${fallback}: ${response.status}`;
+  } catch (error) {
+    return `${fallback}: ${response.status}`;
   }
 }
 
@@ -971,6 +1022,7 @@ function sessionSortComparator() {
 function dashboardSessions() {
   const month = $("#monthFilter").value;
   return state.sessions
+    .filter(hasUsableDate)
     .filter((session) => !month || session.date.slice(0, 7) === month)
     .filter((session) => session.status !== "Cancelled");
 }
@@ -1902,7 +1954,7 @@ function hasUsableDate(session) {
 
 function saveSession(event) {
   event.preventDefault();
-  const studentName = $("#sessionStudent").value.trim();
+  const studentName = normalizeStudentName($("#sessionStudent").value.trim());
   ensureStudent(studentName);
   const id = $("#sessionId").value || uid();
   const existing = state.sessions.find((item) => item.id === id);
