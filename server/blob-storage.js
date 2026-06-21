@@ -4,33 +4,38 @@ async function blobSdk() {
   return import("@vercel/blob");
 }
 
+function blobToken() {
+  if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
+  const managedKey = Object.keys(process.env).find((key) => /^BLOB_STORE_.*_READ_WRITE_TOKEN$/.test(key));
+  return managedKey ? process.env[managedKey] : "";
+}
+
 function requireBlobToken() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const token = blobToken();
+  if (!token) {
     const error = new Error("Vercel Blob storage is not connected.");
     error.code = "BLOB_NOT_CONNECTED";
     throw error;
   }
+  return token;
 }
 
 async function putPrivate(pathname, body, contentType) {
-  requireBlobToken();
+  const token = requireBlobToken();
   const { put } = await blobSdk();
   return put(pathname, body, {
     access: "private",
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType,
-    token: process.env.BLOB_READ_WRITE_TOKEN
+    token
   });
 }
 
 async function getPrivate(pathname) {
-  requireBlobToken();
+  const token = requireBlobToken();
   const { get } = await blobSdk();
-  const result = await get(pathname, {
-    access: "private",
-    token: process.env.BLOB_READ_WRITE_TOKEN
-  });
+  const result = await get(pathname, { access: "private", token });
   if (!result || result.statusCode === 404) return null;
   if (result.statusCode && result.statusCode >= 400) {
     throw new Error(`Blob read failed: ${result.statusCode}`);
@@ -44,9 +49,9 @@ async function getPrivate(pathname) {
 }
 
 async function deletePrivate(pathnames) {
-  requireBlobToken();
+  const token = requireBlobToken();
   const { del } = await blobSdk();
-  return del(pathnames, { token: process.env.BLOB_READ_WRITE_TOKEN });
+  return del(pathnames, { token });
 }
 
 async function requestBuffer(request) {
