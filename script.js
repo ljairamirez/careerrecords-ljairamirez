@@ -1145,22 +1145,34 @@ function updateRateCell(control) {
 
 function renderSchedule() {
   const order = Object.fromEntries(days.map((day, index) => [day, index]));
-  const rows = [...state.schedules].sort((a, b) => order[a.day] - order[b.day] || a.start.localeCompare(b.start));
+  const rows = [...state.schedules]
+    .sort((a, b) => order[a.day] - order[b.day] || a.start.localeCompare(b.start));
+
   $("#scheduleRows").innerHTML = rows.map((item) => (
     `<tr>
       <td>${escapeHtml(item.day)}</td>
-      <td>${escapeHtml(item.start)}-${escapeHtml(item.end)}</td>
+      <td>${escapeHtml(formatScheduleTimeRange(item.start, item.end))}</td>
       <td>${escapeHtml(item.student)}</td>
-      <td>${escapeHtml(item.mode)}</td>
+      <td><span class="mode-badge ${normalizeMode(item.mode)}">${escapeHtml(item.mode)}</span></td>
       <td>${escapeHtml(item.frequency)}</td>
       <td>${escapeHtml(item.status)}</td>
       <td>${escapeHtml(item.notes || "")}</td>
-      <td><div class="row-actions"><button class="mini" type="button" data-edit-schedule="${escapeAttr(item.id)}">Edit</button><button class="mini" type="button" data-delete-schedule="${escapeAttr(item.id)}">Delete</button></div></td>
+      <td>
+        <div class="row-actions">
+          <button class="mini" type="button" data-edit-schedule="${escapeAttr(item.id)}">Edit</button>
+          <button class="mini" type="button" data-delete-schedule="${escapeAttr(item.id)}">Delete</button>
+        </div>
+      </td>
     </tr>`
   )).join("") || emptyRow(8);
 
-  $$("[data-edit-schedule]").forEach((button) => button.addEventListener("click", () => editSchedule(button.dataset.editSchedule)));
-  $$("[data-delete-schedule]").forEach((button) => button.addEventListener("click", () => deleteItem("schedules", button.dataset.deleteSchedule)));
+  $$("[data-edit-schedule]").forEach((button) =>
+    button.addEventListener("click", () => editSchedule(button.dataset.editSchedule))
+  );
+
+  $$("[data-delete-schedule]").forEach((button) =>
+    button.addEventListener("click", () => deleteItem("schedules", button.dataset.deleteSchedule))
+  );
 }
 
 function renderWeekly() {
@@ -1208,7 +1220,7 @@ function scheduleBlocksForDay(items, startHour, endHour, pixelsPerHour) {
     const height = Math.max(48, (block.end - block.start) * pixelsPerHour - 6);
     const left = `calc(${(block.column / columnCount) * 100}% + 6px)`;
     const width = `calc(${100 / columnCount}% - 12px)`;
-    return `<div class="schedule-block ${normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(block.item.timeText || `${block.item.start}-${block.item.end}`)}</span></div>`;
+    return `<div class="schedule-block ${normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(formatScheduleTimeRange(block.item.start, block.item.end))}</span></div>`;
   }).join("");
 }
 
@@ -2910,6 +2922,30 @@ function formatHour(hour) {
   const suffix = hour >= 12 ? "PM" : "AM";
   const display = hour % 12 || 12;
   return `${display} ${suffix}`;
+}
+
+function formatScheduleTime(timeText) {
+  if (!timeText) return "";
+
+  const [hourRaw, minuteRaw] = String(timeText).split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return String(timeText);
+  }
+
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  const displayMinute = String(minute).padStart(2, "0");
+
+  return `${displayHour}:${displayMinute} ${suffix}`;
+}
+
+function formatScheduleTimeRange(start, end) {
+  if (!start || !end) return "";
+
+  return `${formatScheduleTime(start)} – ${formatScheduleTime(end)}`;
 }
 
 function money(value) {

@@ -878,6 +878,51 @@ tbody tr.individual-session td:first-child {
   line-height: 1.25;
 }
 
+.schedule-block.virtual {
+  border-left-color: #0052cc;
+  background: #edf4fd;
+}
+
+.schedule-block.f2f {
+  border-left-color: #e67e22;
+  background: #fff1e5;
+}
+
+.schedule-block.hybrid {
+  border-left-color: #7a4cc2;
+  background: #f3edff;
+  box-shadow: inset 0 0 0 2px rgba(122, 76, 194, 0.18),
+    0 5px 12px rgba(31, 44, 50, 0.12);
+}
+
+/* Schedule table mode labels */
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 66px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mode-badge.virtual {
+  color: #003d99;
+  background: #d9e8ff;
+}
+
+.mode-badge.f2f {
+  color: #9b4e00;
+  background: #ffe4cc;
+}
+
+.mode-badge.hybrid {
+  color: #5639a5;
+  background: #e9ddff;
+}
+
 .schedule-block.individual-session {
   border-left-color: var(--blue);
   background: #edf4fd;
