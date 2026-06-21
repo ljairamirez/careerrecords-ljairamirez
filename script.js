@@ -2120,7 +2120,10 @@ function savePersonalSession(event) {
     tutor: "Personal",
     student: normalizeStudentName($("#personalSessionStudent").value.trim()),
     packageName: $("#personalSessionPackage").value,
-    packageLabel: $("#personalSessionPackage").value || "PACKAGE 1",
+    packageLabel:
+      $("#personalSessionPackageLabel").value.trim() ||
+      $("#personalSessionPackage").value ||
+      "PACKAGE 1",
     classType: $("#personalSessionClassType").value,
     mode: $("#personalSessionMode").value ? normalizeModeLabel($("#personalSessionMode").value) : "",
     studentCount: 1,
@@ -2256,8 +2259,10 @@ function editSession(id) {
   $("#sessionTutor").value = session.tutor;
   $("#sessionStudent").value = session.student;
   updateSessionPackageOptions(session.packageLabel);
-  $("#sessionPackage").value = session.packageName;
-  $("#sessionClassType").value = session.classType;
+  $("#personalSessionPackage").value = session.packageName || "";
+  $("#personalSessionPackageLabel").value =
+    session.packageLabel || session.packageName || "";
+  $("#personalSessionClassType").value = session.classType;
   $("#sessionMode").value = session.mode;
   $("#sessionStudents").value = session.studentCount;
   $("#sessionRate").value = session.rate;
@@ -2362,6 +2367,7 @@ function resetPersonalSessionForm() {
   $("#personalSessionEnd").value = "";
   $("#personalSessionStudent").value = "";
   $("#personalSessionPackage").value = "";
+  $("#personalSessionPackageLabel").value = "";
   $("#personalSessionClassType").value = "";
   $("#personalSessionMode").value = "";
   $("#personalSessionRate").value = "";

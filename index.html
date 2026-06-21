@@ -320,8 +320,19 @@
           <label><span>End</span><input id="personalSessionEnd" type="time" required></label>
           <label><span>Student</span><input id="personalSessionStudent" list="personalStudentOptions" required placeholder="Type or select"></label>
           <datalist id="personalStudentOptions"></datalist>
+          
           <label><span>Package</span><select id="personalSessionPackage"></select></label>
+          <label>
+            <span>Package / Batch</span>
+            <input
+              id="personalSessionPackageLabel"
+              type="text"
+              placeholder="Example: PACKAGE 1"
+            >
+          </label>
+
           <label><span>Class Type</span><select id="personalSessionClassType"></select></label>
+
           <label><span>Mode</span><select id="personalSessionMode"></select></label>
           <label><span>Rate per Hour</span><input id="personalSessionRate" type="number" min="0" step="0.01"></label>
           <label><span># of Hours</span><input id="personalSessionHours" type="number" min="0" step="0.01" required></label>
