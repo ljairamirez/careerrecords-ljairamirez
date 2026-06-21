@@ -13,6 +13,18 @@ const CORRECTED_IMPORTED_SESSION_DATES = {
   wb204: "2026-01-07"
 };
 
+const PERSONAL_VIEW_IDS = new Set([
+  "personal-sessions",
+  "personal-packages",
+  "personal-students"
+]);
+
+const PERSONAL_ACCESS_STORAGE_KEY = "career-records-personal-unlocked";
+
+const PERSONAL_ACCESS_CODE = "ljairamirez";
+
+let currentActiveView = "dashboard";
+
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const sourceCvSections = [
@@ -827,27 +839,98 @@ function renderCloudStatus() {
   button.textContent = "Sync Now";
 }
 
+function isPersonalUnlocked() {
+  return sessionStorage.getItem(PERSONAL_ACCESS_STORAGE_KEY) === "true";
+}
+
+function requestPersonalAccess() {
+  if (isPersonalUnlocked()) return true;
+
+  const enteredPassword = window.prompt("Enter the password to access Personal records:");
+
+  if (enteredPassword === null) {
+    return false;
+  }
+
+  if (enteredPassword === PERSONAL_ACCESS_CODE) {
+    sessionStorage.setItem(PERSONAL_ACCESS_STORAGE_KEY, "true");
+    return true;
+  }
+
+  window.alert("Incorrect password.");
+  return false;
+}
+
+function lockPersonalAccess() {
+  sessionStorage.removeItem(PERSONAL_ACCESS_STORAGE_KEY);
+
+  if (PERSONAL_VIEW_IDS.has(location.hash.replace("#", ""))) {
+    location.hash = "#dashboard";
+  }
+
+  window.alert("Personal records have been locked.");
+}
+
 function setupNavigation() {
   const menuToggle = $("#menuToggle");
   const sidebar = $("#sidebar");
+
   const setMenuOpen = (open) => {
     sidebar?.classList.toggle("open", open);
     menuToggle?.setAttribute("aria-expanded", String(open));
   };
-  menuToggle?.addEventListener("click", () => setMenuOpen(!sidebar?.classList.contains("open")));
+
+  menuToggle?.addEventListener("click", () => {
+    setMenuOpen(!sidebar?.classList.contains("open"));
+  });
+
   const activate = () => {
-    const id = (location.hash || "#dashboard").replace("#", "");
-    const target = document.getElementById(id) ? id : "dashboard";
-    $$(".view").forEach((view) => view.classList.toggle("active", view.id === target));
-    $$(".nav a").forEach((link) => link.classList.toggle("active", link.dataset.view === target));
-    $$(".nav-group").forEach((group) => {
-      if (group.querySelector(`[data-view="${target}"]`)) group.open = true;
+    const requestedId = (location.hash || "#dashboard").replace("#", "");
+    let target = document.getElementById(requestedId) ? requestedId : "dashboard";
+
+    const leavingPersonal =
+      PERSONAL_VIEW_IDS.has(currentActiveView) &&
+      !PERSONAL_VIEW_IDS.has(target);
+
+    if (leavingPersonal) {
+      sessionStorage.removeItem(PERSONAL_ACCESS_STORAGE_KEY);
+    }
+
+    if (PERSONAL_VIEW_IDS.has(target) && !requestPersonalAccess()) {
+      target = "dashboard";
+
+      if (location.hash !== "#dashboard") {
+        location.hash = "#dashboard";
+        return;
+      }
+    }
+
+    $$(".view").forEach((view) => {
+      view.classList.toggle("active", view.id === target);
     });
-    $("#viewTitle").textContent = document.getElementById(target).dataset.title;
-    $("#monthFilter")?.closest("label")?.classList.toggle("hidden-control", target !== "dashboard");
+
+    $$(".nav a").forEach((link) => {
+      link.classList.toggle("active", link.dataset.view === target);
+    });
+
+    $$(".nav-group").forEach((group) => {
+      if (group.querySelector(`[data-view="${target}"]`)) {
+        group.open = true;
+      }
+    });
+
+    $("#viewTitle").textContent =
+      document.getElementById(target)?.dataset.title || "Dashboard";
+
+    $("#monthFilter")
+      ?.closest("label")
+      ?.classList.toggle("hidden-control", target !== "dashboard");
+
     setMenuOpen(false);
+    currentActiveView = target;
     render();
   };
+
   window.addEventListener("hashchange", activate);
   activate();
 }
