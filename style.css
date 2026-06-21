@@ -1891,3 +1891,21 @@ tbody tr.individual-session td:first-child {
     position: static;
   }
 }
+
+.schedule-block.virtual {
+  border-left-color: #0052cc !important;
+  background: #edf4fd !important;
+}
+
+.schedule-block.f2f {
+  border-left-color: #e67e22 !important;
+  background: #fff1e5 !important;
+}
+
+.schedule-block.hybrid {
+  border-left-color: #7a4cc2 !important;
+  background: #f3edff !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(122, 76, 194, 0.18),
+    0 5px 12px rgba(31, 44, 50, 0.12) !important;
+}
