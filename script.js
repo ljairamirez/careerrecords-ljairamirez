@@ -1252,7 +1252,6 @@ function renderSessions() {
     const hours = totalHours(session);
     const pay = totalPay(session);
     return `<tr class="${sessionRowClass(session)}">
-      <td><input type="checkbox" class="session-check" value="${escapeAttr(session.id)}"></td>
       <td>${formatDate(session.date)}</td>
       <td>${escapeHtml(packageLabel(session))}</td>
       <td>${escapeHtml(formatTimeRange(session.start, session.end))}</td>
@@ -1264,7 +1263,7 @@ function renderSessions() {
       <td>${money(pay)}</td>
       <td><div class="row-actions"><button class="mini" type="button" data-edit-session="${escapeAttr(session.id)}">Edit</button><button class="mini" type="button" data-delete-session="${escapeAttr(session.id)}">Delete</button></div></td>
     </tr>`;
-  }).join("") || emptyRow(11);
+  }).join("") || emptyRow(10);
 
   $$("[data-edit-session]").forEach((button) => button.addEventListener("click", () => editSession(button.dataset.editSession)));
   $$("[data-delete-session]").forEach((button) => button.addEventListener("click", () => deleteItem("sessions", button.dataset.deleteSession)));
