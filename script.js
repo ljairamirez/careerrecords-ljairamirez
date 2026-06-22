@@ -1197,7 +1197,7 @@ function renderSessions() {
       <td><input type="checkbox" class="session-check" value="${escapeAttr(session.id)}"></td>
       <td>${formatDate(session.date)}</td>
       <td>${escapeHtml(packageLabel(session))}</td>
-      <td>${escapeHtml(session.timeText || `${session.start}-${session.end}`)}</td>
+      <td>${escapeHtml(formatTimeRange(session.start, session.end))}</td>
       <td>${escapeHtml(session.student)}</td>
       <td>${escapeHtml(session.classType)}</td>
       <td>${escapeHtml(session.mode)}</td>
@@ -1223,7 +1223,7 @@ function renderPersonalSessions() {
     `<tr class="personal-row">
       <td>${formatDate(session.date)}</td>
       <td>${escapeHtml(packageLabel(session))}</td>
-      <td>${escapeHtml(session.timeText || `${session.start}-${session.end}`)}</td>
+      <td>${escapeHtml(formatTimeRange(session.start, session.end))}</td>
       <td>${escapeHtml(session.student)}</td>
       <td>${escapeHtml(session.classType)}</td>
       <td>${escapeHtml(session.mode)}</td>
@@ -3044,6 +3044,29 @@ function emptyRow(count) {
 function dayName(dateString) {
   if (!dateString) return "";
   return new Date(dateString + "T00:00:00").toLocaleDateString("en-US", { weekday: "long" });
+}
+
+function formatTime12Hour(time) {
+  if (!time) return "";
+
+  const [hourText, minuteText] = String(time).split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return String(time);
+  }
+
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  const displayMinute = String(minute).padStart(2, "0");
+
+  return `${displayHour}:${displayMinute} ${suffix}`;
+}
+
+function formatTimeRange(start, end) {
+  if (!start || !end) return "";
+  return `${formatTime12Hour(start)}–${formatTime12Hour(end)}`;
 }
 
 function formatDate(dateString) {
