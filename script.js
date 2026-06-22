@@ -482,9 +482,9 @@ let cloudSync = {
   error: "",
   lastSavedAt: "",
   timer: null,
-  refreshTimer: null,
-  refreshStarted: false,
-  dirty: false
+  saveQueued: false,
+  revision: 0,
+  lastSavedRevision: 0
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -713,11 +713,19 @@ async function initializeCloudSync() {
     cloudSync.error = error.message || "Cloud sync unavailable";
     console.warn("Cloud sync unavailable.", error);
   } finally {
-    cloudSync.loading = false;
-    startCloudRefresh();
-    if (cloudSync.dirty) queueCloudSave();
-    renderCloudStatus();
+  cloudSync.loading = false;
+
+  /*
+    If the user created/edited a record while cloud data was loading,
+    save that newer local version after loading completes.
+  */
+  if (cloudSync.saveQueued) {
+    cloudSync.saveQueued = false;
+    window.setTimeout(() => syncCloudSave(), 0);
   }
+
+  renderCloudStatus();
+}
 }
 
 function localSessionHistoryIsAhead(localState, remoteState) {
@@ -728,32 +736,82 @@ function localSessionHistoryIsAhead(localState, remoteState) {
 }
 
 function queueCloudSave() {
-  if (!cloudSync.enabled || cloudSync.loading) return;
+  if (!cloudSync.enabled) return;
+
+  cloudSync.revision += 1;
+  cloudSync.saveQueued = true;
+
   clearTimeout(cloudSync.timer);
-  cloudSync.timer = window.setTimeout(() => syncCloudSave(), CLOUD_SYNC_DEBOUNCE_MS);
+
+  if (cloudSync.loading) {
+    renderCloudStatus();
+    return;
+  }
+
+  cloudSync.timer = window.setTimeout(() => {
+    syncCloudSave();
+  }, CLOUD_SYNC_DEBOUNCE_MS);
+
   renderCloudStatus();
 }
 
 async function syncCloudSave(force = false) {
   if (!cloudSync.enabled && !force) return;
+
+  if (cloudSync.loading) {
+    cloudSync.saveQueued = true;
+    return;
+  }
+
+  if (cloudSync.saving) {
+    cloudSync.saveQueued = true;
+    return;
+  }
+
+  const revisionBeingSaved = cloudSync.revision;
+  const stateSnapshot = structuredClone(state);
+
   cloudSync.saving = true;
   cloudSync.error = "";
+  cloudSync.saveQueued = false;
   renderCloudStatus();
+
   try {
     const response = await fetch(CLOUD_STATE_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ state })
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ state: stateSnapshot })
     });
-    if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud save failed"));
+
+    if (!response.ok) {
+      throw new Error(`Cloud save failed: ${response.status}`);
+    }
+
     const payload = await response.json();
+
     cloudSync.lastSavedAt = payload.updatedAt || new Date().toISOString();
-    cloudSync.dirty = false;
+    cloudSync.lastSavedRevision = revisionBeingSaved;
   } catch (error) {
-    cloudSync.error = error.message || "Cloud save failed";
+    cloudSync.error = "Cloud save failed";
     console.warn("Cloud save failed.", error);
   } finally {
     cloudSync.saving = false;
+
+    /*
+      If the user added/edited something while this save was running,
+      send the newer state immediately after this request ends.
+    */
+    if (
+      cloudSync.saveQueued ||
+      cloudSync.revision > revisionBeingSaved
+    ) {
+      cloudSync.saveQueued = false;
+      window.setTimeout(() => syncCloudSave(), 0);
+    }
+
     renderCloudStatus();
   }
 }
