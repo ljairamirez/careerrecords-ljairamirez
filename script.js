@@ -567,10 +567,10 @@ function migrateState(inputState) {
 
   next.settings ||= structuredClone(defaultState.settings);
   next.settings.modes = ["Virtual", "F2F", "Hybrid"];
-  next.settings.students = uniqueNormalizedNames((next.settings.students || []).map(normalizeStudentName).filter((name) => normalizeStudentName(name) !== "SUBS"));
-  next.studentRecords = (next.studentRecords || [])
-    .map((student) => ({ ...student, name: normalizeStudentName(student.name), status: student.status || "Active" }))
-    .filter((student) => normalizeStudentName(student.name) !== "SUBS");
+  next.settings.students = uniqueNormalizedNames(
+  (next.settings.students || [])
+    .map(normalizeStudentName)
+    .filter((name) => name && normalizeStudentName(name) !== "SUBS"));
 
   const hydrateSession = (session) => {
     const importedSession = importedSessions[session.id];
@@ -2006,13 +2006,34 @@ function setPersonalSelectedPackagesStatus(status) {
 }
 
 function syncStudentRecords() {
+  state.settings.students ||= [];
   state.studentRecords ||= [];
-  const byName = Object.fromEntries(state.studentRecords.map((student) => [student.name, student]));
-  state.settings.students.forEach((name) => {
-    if (!byName[name]) state.studentRecords.push({ key: name, name, status: "Active", notes: "" });
+
+  const validNames = new Set(
+    state.settings.students
+      .map((name) => String(name || "").trim())
+      .filter(Boolean)
+  );
+
+  const byName = new Map(
+    state.studentRecords.map((student) => [
+      String(student.name || "").trim(),
+      student
+    ])
+  );
+
+  state.studentRecords = [...validNames].map((name) => {
+    const existing = byName.get(name);
+
+    return existing || {
+      key: name,
+      name,
+      status: "Active",
+      notes: ""
+    };
   });
-  state.studentRecords = state.studentRecords.filter((student) => state.settings.students.includes(student.name));
-  state.settings.students = sortNames(uniqueValues(state.settings.students));
+
+  state.settings.students = sortNames([...validNames]);
   state.studentRecords = sortStudentRecords(state.studentRecords);
 }
 
@@ -2025,12 +2046,36 @@ function updateStudentRecord(key, changes) {
 }
 
 function ensureStudent(name) {
-  if (!name) return;
-  if (!state.settings.students.includes(name)) state.settings.students.push(name);
+  const cleanName = String(name || "").trim();
+
+  if (!cleanName) return;
+
+  state.settings.students ||= [];
   state.studentRecords ||= [];
-  if (!state.studentRecords.some((student) => student.name === name)) {
-    state.studentRecords.push({ key: name, name, status: "Active", notes: "Created from session log" });
+
+  const alreadyExists = state.settings.students.some(
+    (student) =>
+      student.trim().toLowerCase() === cleanName.toLowerCase()
+  );
+
+  if (!alreadyExists) {
+    state.settings.students.push(cleanName);
   }
+
+  const hasRecord = state.studentRecords.some(
+    (student) =>
+      student.name.trim().toLowerCase() === cleanName.toLowerCase()
+  );
+
+  if (!hasRecord) {
+    state.studentRecords.push({
+      key: cleanName,
+      name: cleanName,
+      status: "Active",
+      notes: "Created from session log"
+    });
+  }
+
   syncStudentRecords();
 }
 
