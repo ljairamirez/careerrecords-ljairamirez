@@ -1946,3 +1946,55 @@ tbody tr.individual-session td:first-child {
     padding-right: 8px;
   }
 }
+
+@media print {
+  /* Curriculum Vitae only */
+  #cv .document-section {
+    margin-top: 12px;
+  }
+
+  #cv .document-section h3 {
+    margin: 0 0 8px;
+    padding-bottom: 3px;
+    font-size: 12px;
+    border-bottom-width: 1px;
+  }
+
+  #cv .document-items {
+    gap: 8px;
+  }
+
+  #cv .document-item {
+    gap: 2px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  #cv .document-item-title strong,
+  #cv .document-item-title span {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  #cv .document-item-meta,
+  #cv .document-item-description,
+  #cv .document-item p,
+  #cv .document-inline-details p,
+  #cv .document-item li {
+    font-size: 9.5px;
+    line-height: 1.25;
+  }
+
+  #cv .document-item ul {
+    margin-top: 2px;
+    padding-left: 14px;
+  }
+
+  #cv .document-item li {
+    margin: 1px 0;
+  }
+
+  #cv .document-section[data-cv-section="summary"] .document-item p {
+    line-height: 1.3;
+  }
+}
