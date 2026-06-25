@@ -1961,18 +1961,18 @@ tbody tr.individual-session td:first-child {
   }
 
   #cv .document-items {
-    gap: 8px;
+    gap: 6px;
   }
 
   #cv .document-item {
     gap: 2px;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
   #cv .document-item-title strong,
   #cv .document-item-title span {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
   }
 
@@ -1981,7 +1981,7 @@ tbody tr.individual-session td:first-child {
   #cv .document-item p,
   #cv .document-inline-details p,
   #cv .document-item li {
-    font-size: 11.5px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
