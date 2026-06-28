@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -306,6 +306,15 @@
     </section>
 
     <section class="view" id="students" data-title="Collated Per Student">
+      <section class="panel compact-panel no-print">
+        <div class="panel-head student-sort-head">
+          <h2>Student View</h2>
+          <div class="actions wrap sort-actions">
+            <label><span>Sort By</span><select id="studentGroupSortBy"><option value="open-alpha">Open Alphabetical</option><option value="name">Name</option><option value="pay">Total Pay</option><option value="hours">Hours</option><option value="sessions">Sessions</option></select></label>
+            <label><span>Order</span><select id="studentGroupSortDirection"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label>
+          </div>
+        </div>
+      </section>
       <div class="group-list" id="studentGroups"></div>
     </section>
 
@@ -576,3 +585,5 @@
   <script src="script.js?v=70"></script>
 </body>
 </html>
+
+

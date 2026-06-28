@@ -1,4 +1,4 @@
-const STORAGE_KEY = "salary-sheet-state-v5";
+﻿const STORAGE_KEY = "salary-sheet-state-v5";
 const CLOUD_STATE_ENDPOINT = "/api/salary-state";
 const CLOUD_FILE_ENDPOINT = "/api/record-file";
 const CLOUD_SYNC_DEBOUNCE_MS = 900;
@@ -641,11 +641,12 @@ function migrateState(inputState) {
   ]);
   const recordsByName = Object.fromEntries((next.studentRecords || []).map((student) => [student.name, student]));
   next.studentRecords = next.settings.students.map((name) => recordsByName[name] || { key: name, name, status: "Active", notes: "" });
+  syncStudentRecords(next, { persist: false });
   if (next.studentStatusPolicyVersion !== STUDENT_STATUS_POLICY_VERSION) {
-    const openStudents = new Set(next.sessions.filter(isOpenStatus).map((session) => session.student).filter(Boolean));
+    const openStudents = new Set(next.sessions.filter(isOpenStatus).map((session) => studentKey(session.student)).filter(Boolean));
     next.studentRecords = next.studentRecords.map((student) => ({
       ...student,
-      status: openStudents.has(student.name) ? "Active" : "Inactive"
+      status: openStudents.has(studentKey(student.name)) ? "Active" : "Inactive"
     }));
     next.studentStatusPolicyVersion = STUDENT_STATUS_POLICY_VERSION;
   }
@@ -1028,6 +1029,8 @@ function setupForms() {
   });
   $("#sessionSortBy")?.addEventListener("change", renderSessions);
   $("#sessionSortDirection")?.addEventListener("change", renderSessions);
+  $("#studentGroupSortBy")?.addEventListener("change", renderGroups);
+  $("#studentGroupSortDirection")?.addEventListener("change", renderGroups);
   $("#packageSearch")?.addEventListener("input", renderPackages);
   $("#personalPackageSearch")?.addEventListener("input", renderPersonalPackages);
   $("#claimDate").addEventListener("change", () => {
@@ -1044,7 +1047,7 @@ function setupForms() {
 
 function setupActions() {
   $("#printView").addEventListener("click", () => window.print());
-  $("#markClaimed").addEventListener("click", markClaimed);
+  $("#markClaimed").addEventListener("click", confirmBefore("Claim all packages shown in Claiming View?", markClaimed));
   $("#exportSessionsCsv").addEventListener("click", () => exportCsv("session-log.csv", sessionCsvRows(sessionLogRows())));
   $("#exportPersonalCsv")?.addEventListener("click", () => exportCsv("personal-session-log.csv", sessionCsvRows(personalSessionRows())));
   $("#exportClaimCsv").addEventListener("click", () => exportCsv("claiming-view.csv", sessionCsvRows(claimableSessions())));
@@ -1052,16 +1055,16 @@ function setupActions() {
   $("#importJson").addEventListener("change", importJson);
   $("#syncCloudNow")?.addEventListener("click", syncCloudNow);
   $("#inactiveExceptOpen")?.addEventListener("click", setInactiveExceptOpenStudents);
-  $("#resetDemo").addEventListener("click", () => {
+  $("#resetDemo").addEventListener("click", confirmBefore("Reset all local data to the demo workbook?", () => {
     state = migrateState(buildInitialState());
     saveState();
     hydrateControls();
     render();
-  });
-  $("#closeSelectedPackages").addEventListener("click", () => setSelectedPackagesStatus("For Claiming"));
-  $("#reopenSelectedPackages").addEventListener("click", () => setSelectedPackagesStatus("Pending"));
-  $("#closePersonalPackages")?.addEventListener("click", () => setPersonalSelectedPackagesStatus("Closed"));
-  $("#openPersonalPackages")?.addEventListener("click", () => setPersonalSelectedPackagesStatus("Pending"));
+  }));
+  $("#closeSelectedPackages").addEventListener("click", confirmBefore("Close the selected packages for claiming?", () => setSelectedPackagesStatus("For Claiming")));
+  $("#reopenSelectedPackages").addEventListener("click", confirmBefore("Reopen the selected packages as pending?", () => setSelectedPackagesStatus("Pending")));
+  $("#closePersonalPackages")?.addEventListener("click", confirmBefore("Close the selected personal packages?", () => setPersonalSelectedPackagesStatus("Closed")));
+  $("#openPersonalPackages")?.addEventListener("click", confirmBefore("Reopen the selected personal packages?", () => setPersonalSelectedPackagesStatus("Pending")));
 }
 
 function hydrateControls() {
@@ -1207,7 +1210,7 @@ function renderDashboard() {
   $("#dashboardMetrics").innerHTML = [
     metric("Monthly Earnings", money(totals.pay), `${monthLabel} / ${totals.sessions} sessions`, "earnings"),
     metric("Ready For Claiming", money(forClaiming), "closed packages waiting to claim", "unclaimed"),
-    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSessions().length} logs not claimed yet`, "total"),
+    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} / ${unclaimedSessions().length} logs`, "total"),
     metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} (${peak.sessions} sessions)` : "No sessions", "peak")
   ].join("");
 
@@ -1265,8 +1268,8 @@ function renderSessions() {
     </tr>`;
   }).join("") || emptyRow(10);
 
-  $$("[data-edit-session]").forEach((button) => button.addEventListener("click", () => editSession(button.dataset.editSession)));
-  $$("[data-delete-session]").forEach((button) => button.addEventListener("click", () => deleteItem("sessions", button.dataset.deleteSession)));
+  $$("[data-edit-session]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this Pr1me session?", () => editSession(button.dataset.editSession))));
+  $$("[data-delete-session]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this Pr1me session?", () => deleteItem("sessions", button.dataset.deleteSession))));
 }
 
 function personalSessionRows() {
@@ -1291,8 +1294,8 @@ function renderPersonalSessions() {
     </tr>`
   )).join("") || emptyRow(10);
 
-  $$("[data-edit-personal]").forEach((button) => button.addEventListener("click", () => editPersonalSession(button.dataset.editPersonal)));
-  $$("[data-delete-personal]").forEach((button) => button.addEventListener("click", () => deleteItem("personalSessions", button.dataset.deletePersonal)));
+  $$("[data-edit-personal]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this personal session?", () => editPersonalSession(button.dataset.editPersonal))));
+  $$("[data-delete-personal]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this personal session?", () => deleteItem("personalSessions", button.dataset.deletePersonal))));
 }
 
 function renderPersonalPackages() {
@@ -1342,7 +1345,7 @@ function renderRates() {
   )).join("") || emptyRow(6);
 
   $$(".rate-edit").forEach((control) => control.addEventListener("change", () => updateRateCell(control)));
-  $$("[data-delete-rate]").forEach((button) => button.addEventListener("click", () => deleteItem("rates", button.dataset.deleteRate)));
+  $$("[data-delete-rate]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this rate?", () => deleteItem("rates", button.dataset.deleteRate))));
 }
 
 function rateSelect(id, field, options, value) {
@@ -1381,11 +1384,11 @@ function renderSchedule() {
   )).join("") || emptyRow(8);
 
   $$("[data-edit-schedule]").forEach((button) =>
-    button.addEventListener("click", () => editSchedule(button.dataset.editSchedule))
+    button.addEventListener("click", confirmBefore("Edit this schedule item?", () => editSchedule(button.dataset.editSchedule)))
   );
 
   $$("[data-delete-schedule]").forEach((button) =>
-    button.addEventListener("click", () => deleteItem("schedules", button.dataset.deleteSchedule))
+    button.addEventListener("click", confirmBefore("Delete this schedule item?", () => deleteItem("schedules", button.dataset.deleteSchedule)))
   );
 }
 
@@ -1539,6 +1542,11 @@ function currentUnclaimedTotal() {
   return sum(unclaimedSessions(), totalPay);
 }
 
+function unclaimedSinceLabel() {
+  const dates = unclaimedSessions().filter(hasUsableDate).map((session) => session.date).sort();
+  return dates.length ? `Since ${formatDate(dates[0])}` : "No unclaimed logs";
+}
+
 function unclaimedSessions() {
   return state.sessions.filter((session) => !isClaimedStatus(session) && session.status !== "Cancelled");
 }
@@ -1559,9 +1567,8 @@ function unclaimedByStudent() {
 function renderGroups() {
   const rows = state.sessions
     .filter(matchesTutorFilter)
-    .filter((session) => session.status !== "Cancelled")
-    .sort(sessionSortComparator());
-  $("#studentGroups").innerHTML = groupedPanels("student", rows);
+    .filter((session) => session.status !== "Cancelled");
+  $("#studentGroups").innerHTML = groupedPanels("student", rows, studentGroupComparator());
 }
 
 function renderSummaries() {
@@ -1622,8 +1629,8 @@ function renderRecords() {
     </article>`
   )).join("") || `<p class="empty">No attached credential records yet.</p>`;
 
-  $$("[data-edit-record]").forEach((button) => button.addEventListener("click", () => editRecord(button.dataset.editRecord)));
-  $$("[data-delete-record]").forEach((button) => button.addEventListener("click", () => deleteItem("records", button.dataset.deleteRecord)));
+  $$("[data-edit-record]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this credential record?", () => editRecord(button.dataset.editRecord))));
+  $$("[data-delete-record]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this credential record?", () => deleteItem("records", button.dataset.deleteRecord))));
 }
 
 function renderCareerDocuments() {
@@ -1680,8 +1687,8 @@ function renderCurriculumVitae(target) {
     else selectedCvItems.delete(checkbox.dataset.cvSelect);
     if ($("#addSelectedToResume")) $("#addSelectedToResume").disabled = !selectedCvItems.size;
   }));
-  $$("[data-edit-cv-item]").forEach((button) => button.addEventListener("click", () => editCvItem(button.dataset.sectionId, button.dataset.editCvItem)));
-  $$("[data-cv-record-edit]").forEach((button) => button.addEventListener("click", () => editRecord(button.dataset.cvRecordEdit)));
+  $$("[data-edit-cv-item]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this CV detail?", () => editCvItem(button.dataset.sectionId, button.dataset.editCvItem))));
+  $$("[data-cv-record-edit]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this credential record?", () => editRecord(button.dataset.cvRecordEdit))));
 }
 
 function cvSectionGroups() {
@@ -1906,10 +1913,12 @@ function recordProofHtml(record) {
   </details>`;
 }
 
-function groupedPanels(key, rows) {
+function groupedPanels(key, rows, comparator = null) {
   const groups = groupBy(rows, (row) => row[key] || "Unassigned");
-  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([name, items]) => {
-    const totals = summarize(items.filter((item) => item.status !== "Cancelled"));
+  return Object.entries(groups)
+    .map(([name, items]) => ({ name, items, totals: summarize(items.filter((item) => item.status !== "Cancelled")), hasOpen: items.some((item) => !isClaimedStatus(item)) }))
+    .sort(comparator || ((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })))
+    .map(({ name, items, totals }) => {
     const rowHtml = (session) => (
       `<tr class="${sessionRowClass(session)}"><td>${formatDate(session.date)}</td><td>${escapeHtml(dayName(session.date))}</td><td>${escapeHtml(session.timeText || `${session.start}-${session.end}`)}</td><td>${escapeHtml(session.student)}</td><td>${escapeHtml(packageLabel(session))}</td><td>${escapeHtml(session.classType)}</td><td>${number(totalHours(session))}</td><td>${money(session.rate)}</td><td>${money(totalPay(session))}</td><td>${statusPill(session.status)}</td></tr>`
     );
@@ -2005,40 +2014,49 @@ function setPersonalSelectedPackagesStatus(status) {
   render();
 }
 
-function syncStudentRecords() {
-  state.settings.students ||= [];
-  state.studentRecords ||= [];
+function syncStudentRecords(targetState = state, options = {}) {
+  targetState.settings ||= {};
+  targetState.settings.students ||= [];
+  targetState.studentRecords ||= [];
 
-  const validNames = new Set(
-    state.settings.students
-      .map((name) => String(name || "").trim())
-      .filter(Boolean)
-  );
+  const byNormalized = new Map();
+  targetState.studentRecords.forEach((student) => {
+    const name = normalizeStudentName(student.name || student.key || "");
+    const key = studentKey(name);
+    if (!key || byNormalized.has(key)) return;
+    byNormalized.set(key, {
+      ...student,
+      key: name,
+      name
+    });
+  });
 
-  const byName = new Map(
-    state.studentRecords.map((student) => [
-      String(student.name || "").trim(),
-      student
-    ])
-  );
+  const validNames = [];
+  [
+    ...targetState.settings.students,
+    ...(targetState.sessions || []).map((session) => session.student)
+  ].forEach((value) => {
+    const name = normalizeStudentName(value);
+    const key = studentKey(name);
+    if (!name || key === "subs" || validNames.some((existing) => studentKey(existing) === key)) return;
+    validNames.push(name);
+  });
 
-  state.studentRecords = [...validNames].map((name) => {
-    const existing = byName.get(name);
-
+  targetState.studentRecords = sortStudentRecords(validNames.map((name) => {
+    const existing = byNormalized.get(studentKey(name));
     return existing || {
       key: name,
       name,
       status: "Active",
       notes: ""
     };
-  });
+  }));
+  targetState.settings.students = sortNames(validNames);
 
-  state.settings.students = sortNames([...validNames]);
-  state.studentRecords = sortStudentRecords(state.studentRecords);
 }
 
 function updateStudentRecord(key, changes) {
-  const record = state.studentRecords.find((student) => student.key === key);
+  const record = state.studentRecords.find((student) => student.key === key || studentKey(student.name) === studentKey(key));
   if (!record) return;
   Object.assign(record, changes);
   saveState();
@@ -2055,7 +2073,7 @@ function ensureStudent(name) {
 
   const alreadyExists = state.settings.students.some(
     (student) =>
-      student.trim().toLowerCase() === cleanName.toLowerCase()
+      studentKey(student) === studentKey(cleanName)
   );
 
   if (!alreadyExists) {
@@ -2064,7 +2082,7 @@ function ensureStudent(name) {
 
   const hasRecord = state.studentRecords.some(
     (student) =>
-      student.name.trim().toLowerCase() === cleanName.toLowerCase()
+      studentKey(student.name) === studentKey(cleanName)
   );
 
   if (!hasRecord) {
@@ -2081,8 +2099,8 @@ function ensureStudent(name) {
 
 function activeStudentNames() {
   syncStudentRecords();
-  const inactive = new Set(state.studentRecords.filter((student) => student.status !== "Active").map((student) => student.name));
-  return sortNames(state.settings.students.filter((student) => normalizeStudentName(student) !== "SUBS" && !inactive.has(student)));
+  const inactive = new Set(state.studentRecords.filter((student) => student.status !== "Active").map((student) => studentKey(student.name)));
+  return sortNames(state.settings.students.filter((student) => normalizeStudentName(student) !== "SUBS" && !inactive.has(studentKey(student))));
 }
 
 function personalStudentNames() {
@@ -2097,12 +2115,38 @@ function sortStudentRecords(records) {
   return [...records].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
+function studentKey(name) {
+  return normalizeStudentName(name).toLowerCase();
+}
+
+function studentGroupComparator() {
+  const sortBy = $("#studentGroupSortBy")?.value || "open-alpha";
+  const direction = ($("#studentGroupSortDirection")?.value || "asc") === "desc" ? -1 : 1;
+  const alpha = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  return (a, b) => {
+    if (sortBy === "open-alpha") {
+      return Number(b.hasOpen) - Number(a.hasOpen) || alpha(a, b);
+    }
+    if (sortBy === "pay") return ((a.totals.pay - b.totals.pay) || alpha(a, b)) * direction;
+    if (sortBy === "hours") return ((a.totals.hours - b.totals.hours) || alpha(a, b)) * direction;
+    if (sortBy === "sessions") return ((a.totals.sessions - b.totals.sessions) || alpha(a, b)) * direction;
+    return alpha(a, b) * direction;
+  };
+}
+
+function confirmBefore(message, action) {
+  return (...args) => {
+    if (!window.confirm(message)) return;
+    return action(...args);
+  };
+}
+
 function setInactiveExceptOpenStudents() {
   syncStudentRecords();
-  const openStudents = new Set(state.sessions.filter(isOpenStatus).map((session) => session.student).filter(Boolean));
+  const openStudents = new Set(state.sessions.filter(isOpenStatus).map((session) => studentKey(session.student)).filter(Boolean));
   state.studentRecords = state.studentRecords.map((student) => ({
     ...student,
-    status: openStudents.has(student.name) ? "Active" : "Inactive"
+    status: openStudents.has(studentKey(student.name)) ? "Active" : "Inactive"
   }));
   state.studentStatusPolicyVersion = STUDENT_STATUS_POLICY_VERSION;
   saveState();
@@ -2361,10 +2405,9 @@ function editSession(id) {
   $("#sessionTutor").value = session.tutor;
   $("#sessionStudent").value = session.student;
   updateSessionPackageOptions(session.packageLabel);
-  $("#personalSessionPackage").value = session.packageName || "";
-  $("#personalSessionPackageLabel").value =
-    session.packageLabel || session.packageName || "";
-  $("#personalSessionClassType").value = session.classType;
+  $("#sessionPackage").value = session.packageName || "";
+  $("#sessionClaimPackage").value = session.packageLabel || session.packageName || "";
+  $("#sessionClassType").value = session.classType;
   $("#sessionMode").value = session.mode;
   $("#sessionStudents").value = session.studentCount;
   $("#sessionRate").value = session.rate;
@@ -2775,8 +2818,8 @@ function uniqueValues(values) {
 
 function uniqueNormalizedNames(values) {
   const seen = new Set();
-  return values.filter((value) => {
-    const normalized = normalizeStudentName(value).toLowerCase();
+  return values.map(normalizeStudentName).filter((value) => {
+    const normalized = studentKey(value);
     if (!normalized || seen.has(normalized)) return false;
     seen.add(normalized);
     return true;
@@ -3168,7 +3211,7 @@ function formatTime12Hour(time) {
 
 function formatTimeRange(start, end) {
   if (!start || !end) return "";
-  return `${formatTime12Hour(start)}–${formatTime12Hour(end)}`;
+  return `${formatTime12Hour(start)}â€“${formatTime12Hour(end)}`;
 }
 
 function formatDate(dateString) {
@@ -3233,7 +3276,7 @@ function formatScheduleTime(timeText) {
 function formatScheduleTimeRange(start, end) {
   if (!start || !end) return "";
 
-  return `${formatScheduleTime(start)} – ${formatScheduleTime(end)}`;
+  return `${formatScheduleTime(start)} â€“ ${formatScheduleTime(end)}`;
 }
 
 function money(value) {
@@ -3262,3 +3305,14 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+
+
+
+
+
+
+
+
+
+
+

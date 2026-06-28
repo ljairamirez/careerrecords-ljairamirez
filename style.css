@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #f4f8ff;
   --surface: #ffffff;
   --surface-soft: #edf5ff;
@@ -1997,4 +1997,19 @@ tbody tr.individual-session td:first-child {
   #cv .document-section[data-cv-section="summary"] .document-item p {
     line-height: 1.3;
   }
+}
+.compact-panel {
+  padding: 14px 16px;
+}
+
+.student-sort-head {
+  align-items: end;
+}
+
+.sort-actions label {
+  min-width: 170px;
+}
+
+.sort-actions select {
+  min-height: 40px;
 }
