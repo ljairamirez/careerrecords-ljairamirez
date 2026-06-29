@@ -8,6 +8,7 @@ const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
+const REMOVED_IMPORTED_SCHEDULE_IDS = new Set(["sch16"]);
 const CORRECTED_IMPORTED_SESSION_DATES = {
   wb203: "2026-01-06",
   wb204: "2026-01-07"
@@ -639,8 +640,8 @@ function migrateState(inputState) {
     ...next.settings.students,
     ...next.sessions.map((session) => session.student).filter((name) => normalizeStudentName(name) !== "SUBS")
   ]);
-  const recordsByName = Object.fromEntries((next.studentRecords || []).map((student) => [student.name, student]));
-  next.studentRecords = next.settings.students.map((name) => recordsByName[name] || { key: name, name, status: "Active", notes: "" });
+  const recordsByName = new Map((next.studentRecords || []).map((student) => [studentKey(student.name || student.key), student]));
+  next.studentRecords = next.settings.students.map((name) => recordsByName.get(studentKey(name)) || { key: name, name, status: "Active", notes: "" });
   syncStudentRecords(next, { persist: false });
   if (next.studentStatusPolicyVersion !== STUDENT_STATUS_POLICY_VERSION) {
     const openStudents = new Set(next.sessions.filter(isOpenStatus).map((session) => studentKey(session.student)).filter(Boolean));
@@ -653,7 +654,9 @@ function migrateState(inputState) {
   next.claimHistory = normalizeClaimHistory(next.claimHistory, imported?.claimHistory || []);
   next.importStatusPolicyVersion = IMPORT_STATUS_POLICY_VERSION;
 
-  next.schedules = (next.schedules || []).map((item) => ({
+  next.schedules = (next.schedules || [])
+    .filter((item) => !REMOVED_IMPORTED_SCHEDULE_IDS.has(item.id))
+    .map((item) => ({
     ...item,
     student: normalizeStudentName(item.student),
     mode: normalizeModeLabel(item.mode)
@@ -663,6 +666,7 @@ function migrateState(inputState) {
 }
 
 function saveState() {
+  state.localUpdatedAt = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   cloudSync.dirty = true;
   queueCloudSave();
@@ -695,7 +699,7 @@ async function initializeCloudSync() {
     if (payload?.state) {
       const remoteState = migrateState(payload.state);
       cloudSync.lastSavedAt = payload.updatedAt || "";
-      if (hadLocalStateAtStartup && localSessionHistoryIsAhead(state, remoteState)) {
+      if (localStateShouldWinCloud(state, payload.updatedAt, remoteState)) {
         cloudSync.dirty = true;
         await syncCloudSave(true);
       } else {
@@ -706,8 +710,10 @@ async function initializeCloudSync() {
         render();
         migrateLegacyRecordAttachments();
       }
-    } else {
+    } else if (hadLocalStateAtStartup) {
       await syncCloudSave(true);
+    } else {
+      cloudSync.error = "No cloud data found";
     }
     await syncPendingRecordAttachments();
   } catch (error) {
@@ -729,9 +735,23 @@ async function initializeCloudSync() {
 }
 }
 
-function localSessionHistoryIsAhead(localState, remoteState) {
-  const localRows = (localState?.sessions || []).filter(hasUsableDate);
-  const remoteRows = (remoteState?.sessions || []).filter(hasUsableDate);
+function localStateShouldWinCloud(localState, remoteUpdatedAt, remoteState) {
+  if (!hadLocalStateAtStartup) return false;
+  const localUpdatedAt = localState?.localUpdatedAt || "";
+  if (localUpdatedAt) {
+    if (!remoteUpdatedAt) return true;
+    return new Date(localUpdatedAt).getTime() > new Date(remoteUpdatedAt).getTime();
+  }
+  return currentMonthSessionHistoryIsAhead(localState, remoteState);
+}
+
+function currentMonthSessionHistoryIsAhead(localState, remoteState) {
+  const month = new Date().toISOString().slice(0, 7);
+  const rowsForMonth = (stateToCheck) => (stateToCheck?.sessions || [])
+    .filter(hasUsableDate)
+    .filter((session) => session.date?.startsWith(month));
+  const localRows = rowsForMonth(localState);
+  const remoteRows = rowsForMonth(remoteState);
   const latest = (rows) => rows.reduce((date, row) => row.date > date ? row.date : date, "");
   return localRows.length > remoteRows.length || latest(localRows) > latest(remoteRows);
 }
@@ -1268,7 +1288,7 @@ function renderSessions() {
     </tr>`;
   }).join("") || emptyRow(10);
 
-  $$("[data-edit-session]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this Pr1me session?", () => editSession(button.dataset.editSession))));
+  $$("[data-edit-session]").forEach((button) => button.addEventListener("click", () => editSession(button.dataset.editSession)));
   $$("[data-delete-session]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this Pr1me session?", () => deleteItem("sessions", button.dataset.deleteSession))));
 }
 
@@ -1294,7 +1314,7 @@ function renderPersonalSessions() {
     </tr>`
   )).join("") || emptyRow(10);
 
-  $$("[data-edit-personal]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this personal session?", () => editPersonalSession(button.dataset.editPersonal))));
+  $$("[data-edit-personal]").forEach((button) => button.addEventListener("click", () => editPersonalSession(button.dataset.editPersonal)));
   $$("[data-delete-personal]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this personal session?", () => deleteItem("personalSessions", button.dataset.deletePersonal))));
 }
 
@@ -1355,6 +1375,7 @@ function rateSelect(id, field, options, value) {
 function updateRateCell(control) {
   const rate = state.rates.find((item) => item.id === control.dataset.rateId);
   if (!rate) return;
+  if (!window.confirm("Save this rate change?")) { renderRates(); return; }
   rate[control.dataset.rateField] = control.dataset.rateField === "amount" ? Number(control.value || 0) : control.value;
   saveState();
   setSuggestedRate();
@@ -1384,7 +1405,7 @@ function renderSchedule() {
   )).join("") || emptyRow(8);
 
   $$("[data-edit-schedule]").forEach((button) =>
-    button.addEventListener("click", confirmBefore("Edit this schedule item?", () => editSchedule(button.dataset.editSchedule)))
+    button.addEventListener("click", () => editSchedule(button.dataset.editSchedule))
   );
 
   $$("[data-delete-schedule]").forEach((button) =>
@@ -1629,7 +1650,7 @@ function renderRecords() {
     </article>`
   )).join("") || `<p class="empty">No attached credential records yet.</p>`;
 
-  $$("[data-edit-record]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this credential record?", () => editRecord(button.dataset.editRecord))));
+  $$("[data-edit-record]").forEach((button) => button.addEventListener("click", () => editRecord(button.dataset.editRecord)));
   $$("[data-delete-record]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this credential record?", () => deleteItem("records", button.dataset.deleteRecord))));
 }
 
@@ -1687,8 +1708,8 @@ function renderCurriculumVitae(target) {
     else selectedCvItems.delete(checkbox.dataset.cvSelect);
     if ($("#addSelectedToResume")) $("#addSelectedToResume").disabled = !selectedCvItems.size;
   }));
-  $$("[data-edit-cv-item]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this CV detail?", () => editCvItem(button.dataset.sectionId, button.dataset.editCvItem))));
-  $$("[data-cv-record-edit]").forEach((button) => button.addEventListener("click", confirmBefore("Edit this credential record?", () => editRecord(button.dataset.cvRecordEdit))));
+  $$("[data-edit-cv-item]").forEach((button) => button.addEventListener("click", () => editCvItem(button.dataset.sectionId, button.dataset.editCvItem)));
+  $$("[data-cv-record-edit]").forEach((button) => button.addEventListener("click", () => editRecord(button.dataset.cvRecordEdit)));
 }
 
 function cvSectionGroups() {
@@ -1858,6 +1879,7 @@ function saveCvDetail(event) {
   const targetSectionId = $("#cvDetailSection")?.value || originalSectionId;
   if (!originalSectionId || !itemId) return;
 
+  if (!window.confirm("Save the updated CV detail?")) return;
   state.cvSections = normalizeCvSections(state.cvSections || buildDefaultCvSections());
   const originalSection = state.cvSections.find((section) => section.id === originalSectionId);
   const targetSection = state.cvSections.find((section) => section.id === targetSectionId) || originalSection;
@@ -1920,7 +1942,7 @@ function groupedPanels(key, rows, comparator = null) {
     .sort(comparator || ((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })))
     .map(({ name, items, totals }) => {
     const rowHtml = (session) => (
-      `<tr class="${sessionRowClass(session)}"><td>${formatDate(session.date)}</td><td>${escapeHtml(dayName(session.date))}</td><td>${escapeHtml(session.timeText || `${session.start}-${session.end}`)}</td><td>${escapeHtml(session.student)}</td><td>${escapeHtml(packageLabel(session))}</td><td>${escapeHtml(session.classType)}</td><td>${number(totalHours(session))}</td><td>${money(session.rate)}</td><td>${money(totalPay(session))}</td><td>${statusPill(session.status)}</td></tr>`
+      `<tr class="${sessionRowClass(session)}"><td>${formatDate(session.date)}</td><td>${escapeHtml(dayName(session.date))}</td><td>${escapeHtml(formatTimeRange(session.start, session.end))}</td><td>${escapeHtml(session.student)}</td><td>${escapeHtml(packageLabel(session))}</td><td>${escapeHtml(session.classType)}</td><td>${number(totalHours(session))}</td><td>${money(session.rate)}</td><td>${money(totalPay(session))}</td><td>${statusPill(session.status)}</td></tr>`
     );
     const tableHtml = (list) => `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Time</th><th>Student</th><th>Package</th><th>Type</th><th>Hours</th><th>Rate</th><th>Total</th><th>Status</th></tr></thead><tbody>${list.map(rowHtml).join("") || emptyRow(10)}</tbody></table></div>`;
     const openItems = items.filter((session) => !isClaimedStatus(session));
@@ -2020,26 +2042,38 @@ function syncStudentRecords(targetState = state, options = {}) {
   targetState.studentRecords ||= [];
 
   const byNormalized = new Map();
+  const aliasToFullKey = new Map();
   targetState.studentRecords.forEach((student) => {
     const name = normalizeStudentName(student.name || student.key || "");
-    const key = studentKey(name);
-    if (!key || byNormalized.has(key)) return;
-    byNormalized.set(key, {
+    const fullKey = studentKey(name);
+    if (!fullKey || byNormalized.has(fullKey)) return;
+    const normalizedRecord = {
       ...student,
       key: name,
       name
+    };
+    byNormalized.set(fullKey, normalizedRecord);
+    [student.key, student.name, name].forEach((alias) => {
+      const aliasKey = studentKey(alias);
+      if (aliasKey) aliasToFullKey.set(aliasKey, fullKey);
     });
   });
 
+  const sessionStudentNames = (targetState.sessions || []).map((session) => session.student);
   const validNames = [];
+  const seen = new Set();
   [
     ...targetState.settings.students,
-    ...(targetState.sessions || []).map((session) => session.student)
+    ...sessionStudentNames
   ].forEach((value) => {
-    const name = normalizeStudentName(value);
-    const key = studentKey(name);
-    if (!name || key === "subs" || validNames.some((existing) => studentKey(existing) === key)) return;
-    validNames.push(name);
+    const normalizedName = normalizeStudentName(value);
+    let key = studentKey(normalizedName);
+    if (!normalizedName || key === "subs") return;
+    const fullKey = aliasToFullKey.get(key) || key;
+    if (seen.has(fullKey)) return;
+    seen.add(fullKey);
+    const existing = byNormalized.get(fullKey);
+    validNames.push(existing?.name || normalizedName);
   });
 
   targetState.studentRecords = sortStudentRecords(validNames.map((name) => {
@@ -2052,12 +2086,12 @@ function syncStudentRecords(targetState = state, options = {}) {
     };
   }));
   targetState.settings.students = sortNames(validNames);
-
 }
 
 function updateStudentRecord(key, changes) {
   const record = state.studentRecords.find((student) => student.key === key || studentKey(student.name) === studentKey(key));
   if (!record) return;
+  if (!window.confirm("Save this student detail change?")) { hydrateControls(); renderStudentStatuses(); return; }
   Object.assign(record, changes);
   saveState();
   hydrateControls();
@@ -2116,7 +2150,9 @@ function sortStudentRecords(records) {
 }
 
 function studentKey(name) {
-  return normalizeStudentName(name).toLowerCase();
+  const key = normalizeStudentName(name).toLowerCase();
+  if (key === "thirdy" || key === "abella, thirdy") return "abella, thirdy";
+  return key;
 }
 
 function studentGroupComparator() {
@@ -2218,9 +2254,10 @@ function hasUsableDate(session) {
 function saveSession(event) {
   event.preventDefault();
   const studentName = normalizeStudentName($("#sessionStudent").value.trim());
-  ensureStudent(studentName);
   const id = $("#sessionId").value || uid();
   const existing = state.sessions.find((item) => item.id === id);
+  if (existing && !window.confirm("Save the updated Pr1me session details?")) return;
+  ensureStudent(studentName);
   const hours = Number($("#sessionHours").value || 0);
   const rate = Number($("#sessionRate").value || 0);
   const session = {
@@ -2255,6 +2292,8 @@ function saveSession(event) {
 function savePersonalSession(event) {
   event.preventDefault();
   const id = $("#personalSessionId").value || uid();
+  const existing = state.personalSessions?.find((item) => item.id === id);
+  if (existing && !window.confirm("Save the updated personal session details?")) return;
   const hours = Number($("#personalSessionHours").value || 0);
   const rate = Number($("#personalSessionRate").value || 0);
   const session = {
@@ -2276,7 +2315,7 @@ function savePersonalSession(event) {
     hours,
     rate,
     totalPay: hours * rate,
-    status: state.personalSessions?.find((item) => item.id === id)?.status || "Pending",
+    status: existing?.status || "Pending",
     claimDate: "",
     notes: $("#personalSessionNotes").value.trim(),
     personal: true
@@ -2292,6 +2331,7 @@ function savePersonalSession(event) {
 async function saveRecord(event) {
   event.preventDefault();
   const existing = (state.records || []).find((item) => item.id === $("#recordId").value);
+  if (existing && !window.confirm("Save the updated credential record details?")) return;
   const id = $("#recordId").value || uid();
   const file = $("#recordFileInput")?.files?.[0] || null;
   const fileName = file ? file.name : existing?.fileName || $("#recordFile").value.trim();
@@ -2340,6 +2380,8 @@ async function saveRecord(event) {
 
 function saveRate(event) {
   event.preventDefault();
+  const existing = state.rates.find((item) => item.id === $("#rateId").value);
+  if (existing && !window.confirm("Save the updated rate details?")) return;
   const rate = {
     id: $("#rateId").value || uid(),
     tutor: $("#rateTutor").value,
@@ -2357,6 +2399,8 @@ function saveRate(event) {
 
 function saveSchedule(event) {
   event.preventDefault();
+  const existing = state.schedules.find((item) => item.id === $("#scheduleId").value);
+  if (existing && !window.confirm("Save the updated schedule details?")) return;
   const schedule = {
     id: $("#scheduleId").value || uid(),
     day: $("#scheduleDay").value,
@@ -2839,6 +2883,7 @@ function uniqueDisplayValues(values) {
 function normalizeStudentName(name) {
   const raw = normalizeProgramAlias(String(name || "").replace(/\s+/g, " ").trim());
   if (!raw) return "";
+  if (/^thirdy$/i.test(raw)) return "Abella, Thirdy";
   if (isProgramName(raw)) return raw;
 
   const parenthetical = raw.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
@@ -2850,6 +2895,8 @@ function normalizeStudentName(name) {
     info = uniqueValues([trailingInfo.info, info]).join(" / ");
   }
 
+  const alias = studentNameAlias(base);
+  if (alias) return appendStudentInfo(alias, info);
   if (base.includes(",")) {
     const [surname, ...rest] = base.split(",");
     const first = rest.join(",").trim();
@@ -2863,6 +2910,43 @@ function normalizeStudentName(name) {
   }
 
   return `${base}${info ? ` (${info})` : ""}`;
+}
+
+function studentNameAlias(name) {
+  const key = String(name || "").trim().toLowerCase();
+  const aliases = {
+    ash: "Villena, Ash",
+    anna: "Rugayan, Anna",
+    ashley: "Abella, Ashley",
+    beltran: "Beltran, Eiliyah",
+    eiliyah: "Beltran, Eiliyah",
+    erin: "Ratio, Erin",
+    hannah: "Chan, Hannah",
+    hans: "Dumlao, Hans",
+    jacob: "Nolido, Jacob",
+    janver: "Cabahug, Janver",
+    jeisha: "Refuerzo, Jeisha",
+    kaela: "Capinpin, Michaela",
+    lia: "Beltran, Eiliyah",
+    luke: "Ureta, Luke",
+    mariah: "Tibig, Maria",
+    megan: "Nidea, Megan",
+    miguel: "Katigbak, Miguel",
+    poseidon: "Salarda, Poseidon",
+    rafa: "Go, Rafa",
+    reeva: "Tapia, Reeva",
+    sachy: "Patdu, Sachy",
+    sam: "Pagayanan, Sam",
+    teo: "Salandanan, Teo",
+    thirdy: "Abella, Thirdy"
+  };
+  return aliases[key] || "";
+}
+
+function appendStudentInfo(name, info) {
+  if (!info) return name;
+  if (/\([^)]*\)$/.test(name)) return name;
+  return `${name} (${info})`;
 }
 
 function extractTrailingStudentInfo(name) {
@@ -3211,7 +3295,7 @@ function formatTime12Hour(time) {
 
 function formatTimeRange(start, end) {
   if (!start || !end) return "";
-  return `${formatTime12Hour(start)}â€“${formatTime12Hour(end)}`;
+  return `${formatTime12Hour(start)} - ${formatTime12Hour(end)}`;
 }
 
 function formatDate(dateString) {
@@ -3276,7 +3360,7 @@ function formatScheduleTime(timeText) {
 function formatScheduleTimeRange(start, end) {
   if (!start || !end) return "";
 
-  return `${formatScheduleTime(start)} â€“ ${formatScheduleTime(end)}`;
+  return `${formatScheduleTime(start)} - ${formatScheduleTime(end)}`;
 }
 
 function money(value) {
@@ -3305,6 +3389,15 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+
+
+
+
+
+
+
+
+
 
 
 
