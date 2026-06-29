@@ -472,6 +472,7 @@ const defaultState = {
 };
 
 const hadLocalStateAtStartup = hasStoredState();
+const hadCurrentSeedAtStartup = Boolean(window.salarySheetCurrentState);
 let state = loadState();
 let recentlyClaimedPackageKeys = new Set();
 let cvSelectionMode = false;
@@ -520,13 +521,17 @@ function hasStoredState() {
 }
 
 function loadState() {
+  const currentSeed = window.salarySheetCurrentState ? migrateState(structuredClone(window.salarySheetCurrentState)) : null;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return migrateState(JSON.parse(stored));
+    if (stored) {
+      const storedState = migrateState(JSON.parse(stored));
+      return currentSeed && currentMonthSessionHistoryIsAhead(currentSeed, storedState) ? currentSeed : storedState;
+    }
   } catch (error) {
     console.warn("Could not load saved Salary Sheet data.", error);
   }
-  return migrateState(buildInitialState());
+  return currentSeed || migrateState(buildInitialState());
 }
 
 function buildInitialState() {
@@ -736,8 +741,9 @@ async function initializeCloudSync() {
 }
 
 function localStateShouldWinCloud(localState, remoteUpdatedAt, remoteState) {
-  if (!hadLocalStateAtStartup) return false;
+  if (!hadLocalStateAtStartup && !hadCurrentSeedAtStartup) return false;
   const localUpdatedAt = localState?.localUpdatedAt || "";
+  if (currentMonthSessionHistoryIsAhead(localState, remoteState)) return true;
   if (localUpdatedAt) {
     if (!remoteUpdatedAt) return true;
     return new Date(localUpdatedAt).getTime() > new Date(remoteUpdatedAt).getTime();
@@ -2059,6 +2065,16 @@ function syncStudentRecords(targetState = state, options = {}) {
     });
   });
 
+  const surnameFragments = new Set();
+  [
+    ...targetState.settings.students,
+    ...targetState.studentRecords.map((student) => student.name)
+  ].forEach((value) => {
+    const normalized = normalizeStudentName(value);
+    const commaIndex = normalized.indexOf(",");
+    if (commaIndex > 0) surnameFragments.add(normalized.slice(0, commaIndex).trim().toLowerCase());
+  });
+
   const sessionStudentNames = (targetState.sessions || []).map((session) => session.student);
   const validNames = [];
   const seen = new Set();
@@ -2069,6 +2085,7 @@ function syncStudentRecords(targetState = state, options = {}) {
     const normalizedName = normalizeStudentName(value);
     let key = studentKey(normalizedName);
     if (!normalizedName || key === "subs") return;
+    if (!normalizedName.includes(",") && surnameFragments.has(key)) return;
     const fullKey = aliasToFullKey.get(key) || key;
     if (seen.has(fullKey)) return;
     seen.add(fullKey);
