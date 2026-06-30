@@ -1036,6 +1036,9 @@ function setupForms() {
     setSuggestedRate();
   });
 
+  $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
+  $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
+
   $("#monthFilter").addEventListener("change", render);
   $("#tutorFilter")?.addEventListener("change", render);
   $("#summaryYear").addEventListener("change", () => {
@@ -1999,6 +2002,45 @@ function updateSessionPackageOptions(selected = "", blankDefault = false) {
   fillSelect(select, options.length ? options : ["PACKAGE 1"], blankDefault ? "" : selected || openPackage || next || options[0] || "PACKAGE 1");
 }
 
+function resetPersonalPackageLabelForStudent() {
+  const input = $("#personalSessionPackageLabel");
+  if (input && !$("#personalSessionId")?.value) input.value = "";
+  updatePersonalSessionPackageOptions();
+}
+
+function updatePersonalSessionPackageOptions(selected = "") {
+  const input = $("#personalSessionPackageLabel");
+  if (!input) return;
+  const editing = Boolean($("#personalSessionId")?.value);
+  const current = selected || input.value.trim();
+  const nextLabel = nextPersonalPackageLabel(current, { editing });
+  input.value = nextLabel;
+}
+
+function nextPersonalPackageLabel(selected = "", options = {}) {
+  const student = normalizeStudentName($("#personalSessionStudent")?.value.trim() || "");
+  if (!student) return selected || "";
+  const summaries = packageSummaries((state.personalSessions || []).filter((session) => session.student === student));
+  const isClosed = (pkg) => pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
+  const selectedPackage = summaries.find((pkg) => samePackageLabel(pkg.label, selected));
+  if (options.editing && selected) return selected;
+  if (selected && (!selectedPackage || !isClosed(selectedPackage))) return selected;
+  const openPackage = summaries.find((pkg) => !isClosed(pkg))?.label;
+  if (openPackage) return openPackage;
+  const numbers = summaries.map((pkg) => packageNumber(pkg.label)).filter(Boolean);
+  return `PACKAGE ${Math.max(0, ...numbers) + 1}`;
+}
+
+function samePackageLabel(a, b) {
+  const first = String(a || "").trim();
+  const second = String(b || "").trim();
+  if (!first || !second) return false;
+  const firstNo = packageNumber(first);
+  const secondNo = packageNumber(second);
+  if (firstNo && secondNo) return firstNo === secondNo;
+  return first.toLowerCase() === second.toLowerCase();
+}
+
 function setSelectedPackagesStatus(status) {
   const selected = new Set($$(".package-check:checked").map((box) => box.value));
   if (!selected.size) return;
@@ -2040,6 +2082,7 @@ function setPersonalSelectedPackagesStatus(status) {
   });
   saveState();
   render();
+  updatePersonalSessionPackageOptions();
 }
 
 function syncStudentRecords(targetState = state, options = {}) {
@@ -2312,6 +2355,8 @@ function savePersonalSession(event) {
   const existing = state.personalSessions?.find((item) => item.id === id);
   if (existing && !window.confirm("Save the updated personal session details?")) return;
   const hours = Number($("#personalSessionHours").value || 0);
+  const studentName = normalizeStudentName($("#personalSessionStudent").value.trim());
+  const packageLabel = existing?.packageLabel || nextPersonalPackageLabel($("#personalSessionPackageLabel").value.trim());
   const rate = Number($("#personalSessionRate").value || 0);
   const session = {
     id,
@@ -2320,12 +2365,9 @@ function savePersonalSession(event) {
     end: $("#personalSessionEnd").value,
     timeText: `${$("#personalSessionStart").value}-${$("#personalSessionEnd").value}`,
     tutor: "Personal",
-    student: normalizeStudentName($("#personalSessionStudent").value.trim()),
+    student: studentName,
     packageName: $("#personalSessionPackage").value,
-    packageLabel:
-      $("#personalSessionPackageLabel").value.trim() ||
-      $("#personalSessionPackage").value ||
-      "PACKAGE 1",
+    packageLabel,
     classType: $("#personalSessionClassType").value,
     mode: $("#personalSessionMode").value ? normalizeModeLabel($("#personalSessionMode").value) : "",
     studentCount: 1,
@@ -2486,6 +2528,7 @@ function editPersonalSession(id) {
   $("#personalSessionEnd").value = session.end;
   $("#personalSessionStudent").value = session.student;
   $("#personalSessionPackage").value = session.packageName || session.packageLabel;
+  $("#personalSessionPackageLabel").value = session.packageLabel || session.packageName || "";
   $("#personalSessionClassType").value = session.classType;
   $("#personalSessionMode").value = session.mode;
   $("#personalSessionRate").value = session.rate;
@@ -2578,6 +2621,7 @@ function resetPersonalSessionForm() {
   $("#personalSessionMode").value = "";
   $("#personalSessionRate").value = "";
   $("#personalSessionHours").value = "";
+  updatePersonalSessionPackageOptions("");
 }
 
 function resetRecordForm() {
@@ -3406,6 +3450,7 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+
 
 
 
