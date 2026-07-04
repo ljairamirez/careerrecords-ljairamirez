@@ -1,8 +1,9 @@
-﻿const STORAGE_KEY = "salary-sheet-state-v5";
+const STORAGE_KEY = "salary-sheet-state-v5";
 const CLOUD_STATE_ENDPOINT = "/api/salary-state";
 const CLOUD_FILE_ENDPOINT = "/api/record-file";
 const CLOUD_SYNC_DEBOUNCE_MS = 900;
 const CLOUD_REFRESH_MS = 15000;
+const CURRENT_RATE_TUTOR = "Graduate Tutor";
 const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
@@ -1123,7 +1124,7 @@ function hydrateControls() {
   fillSelect($("#scheduleFrequency"), state.settings.frequencies);
   fillSelect($("#scheduleStatus"), state.settings.scheduleStatuses);
 
-  fillSelect($("#rateTutor"), ["All Tutors", "Graduate Tutor", "Group Class", ...state.settings.tutors]);
+  fillSelect($("#rateTutor"), [CURRENT_RATE_TUTOR], CURRENT_RATE_TUTOR);
   fillSelect($("#rateClassType"), state.settings.classTypes);
   fillSelect($("#rateMode"), state.settings.modes);
   fillSelect($("#ratePackage"), state.settings.packages);
@@ -1362,9 +1363,10 @@ function renderPersonalGroups() {
 }
 
 function renderRates() {
-  $("#rateRows").innerHTML = state.rates.map((rate) => (
+  const visibleRates = state.rates.filter((rate) => rate.tutor === CURRENT_RATE_TUTOR);
+  $("#rateRows").innerHTML = visibleRates.map((rate) => (
     `<tr>
-      <td>${rateSelect(rate.id, "tutor", ["All Tutors", "Graduate Tutor", "Group Class", ...state.settings.tutors], rate.tutor)}</td>
+      <td>${rateSelect(rate.id, "tutor", [CURRENT_RATE_TUTOR], rate.tutor)}</td>
       <td>${rateSelect(rate.id, "classType", state.settings.classTypes, rate.classType)}</td>
       <td>${rateSelect(rate.id, "mode", state.settings.modes, rate.mode)}</td>
       <td>${rateSelect(rate.id, "packageName", state.settings.packages, rate.packageName)}</td>
@@ -1718,7 +1720,7 @@ function renderCurriculumVitae(target) {
     if ($("#addSelectedToResume")) $("#addSelectedToResume").disabled = !selectedCvItems.size;
   }));
   $$("[data-edit-cv-item]").forEach((button) => button.addEventListener("click", () => editCvItem(button.dataset.sectionId, button.dataset.editCvItem)));
-  $$("[data-cv-record-edit]").forEach((button) => button.addEventListener("click", () => editRecord(button.dataset.cvRecordEdit)));
+  $$(`[data-cv-record-edit]`).forEach((button) => button.addEventListener("click", () => editCvRecordItem(button.dataset.sectionId, button.dataset.cvRecordEdit)));
 }
 
 function cvSectionGroups() {
@@ -1778,8 +1780,8 @@ function recordToCvItem(record) {
     recordId: record.id,
     source: "record",
     title: record.title || "",
-    date: formatRecordPeriod(record),
-    meta: [record.organization, record.location].filter(Boolean).join(" / "),
+    date: Object.prototype.hasOwnProperty.call(record, "cvDate") ? record.cvDate : formatRecordPeriod(record),
+    meta: Object.prototype.hasOwnProperty.call(record, "cvMeta") ? record.cvMeta : [record.organization, record.location].filter(Boolean).join(" / "),
     description: record.description || "",
     descriptionItalic: true,
     bullets: record.bullets || []
@@ -1791,7 +1793,7 @@ function cvItemHtml(item, options = {}) {
     ? `<label class="cv-select-control no-print"><input type="checkbox" data-cv-select="${escapeAttr(item.id)}" ${selectedCvItems.has(item.id) ? "checked" : ""}><span>Add</span></label>`
     : "";
   const editButton = item.recordId
-    ? `<button class="mini cv-edit-button no-print" type="button" data-cv-record-edit="${escapeAttr(item.recordId)}">Edit</button>`
+    ? `<button class="mini cv-edit-button no-print" type="button" data-section-id="${escapeAttr(options.sectionId || "")}" data-cv-record-edit="${escapeAttr(item.recordId)}">Edit</button>`
     : `<button class="mini cv-edit-button no-print" type="button" data-section-id="${escapeAttr(options.sectionId || "")}" data-edit-cv-item="${escapeAttr(item.id)}">Edit</button>`;
   const removeButton = options.resume
     ? `<button class="mini cv-edit-button no-print" type="button" data-remove-resume-item="${escapeAttr(item.id)}">Remove</button>`
@@ -1881,12 +1883,33 @@ function editCvItem(sectionId, itemId) {
   $(".cv-builder-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function editCvRecordItem(sectionId, recordId) {
+  const record = (state.records || []).find((item) => item.id === recordId);
+  if (!record) return;
+  const section = sectionId || sectionIdFromTitle(record.category || "Works");
+  const item = recordToCvItem(record);
+  $("#cvDetailEditingSection").value = section;
+  $("#cvDetailEditingId").value = item.id;
+  $("#cvDetailSection").value = section;
+  $("#cvDetailTitle").value = item.title || "";
+  $("#cvDetailDate").value = item.date || "";
+  $("#cvDetailMeta").value = item.meta || "";
+  $("#cvDetailDescription").value = item.description || "";
+  $("#cvDetailBullets").value = (item.bullets || []).join("\n");
+  $("#cvDetailTitle").focus();
+  $(".cv-builder-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function saveCvDetail(event) {
   event?.preventDefault();
   const originalSectionId = $("#cvDetailEditingSection")?.value || "";
   const itemId = $("#cvDetailEditingId")?.value || "";
   const targetSectionId = $("#cvDetailSection")?.value || originalSectionId;
   if (!originalSectionId || !itemId) return;
+  if (itemId.startsWith("record:")) {
+    saveCvRecordDetail(itemId.slice("record:".length), targetSectionId || originalSectionId);
+    return;
+  }
 
   if (!window.confirm("Save the updated CV detail?")) return;
   state.cvSections = normalizeCvSections(state.cvSections || buildDefaultCvSections());
@@ -1906,6 +1929,28 @@ function saveCvDetail(event) {
   if (targetSection.id === originalSection.id) targetSection.items.splice(itemIndex, 0, item);
   else targetSection.items.push(item);
   $("#cvDetailEditingSection").value = targetSection.id;
+  saveState();
+  renderCareerDocuments();
+}
+
+function saveCvRecordDetail(recordId, targetSectionId) {
+  const record = (state.records || []).find((item) => item.id === recordId);
+  if (!record) return;
+  if (!window.confirm("Save the updated CV record detail?")) return;
+  const targetSection = (state.cvSections || []).find((section) => section.id === targetSectionId);
+  const selectedSectionLabel = $("#cvDetailSection")?.selectedOptions?.[0]?.textContent || "";
+  Object.assign(record, {
+    category: normalizeCvSectionTitle(targetSection?.title || selectedSectionLabel || record.category || "Works"),
+    title: $("#cvDetailTitle")?.value.trim() || "",
+    cvDate: $("#cvDetailDate")?.value.trim() || "",
+    cvMeta: $("#cvDetailMeta")?.value.trim() || "",
+    description: $("#cvDetailDescription")?.value.trim() || "",
+    bullets: ($("#cvDetailBullets")?.value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+  });
+  const savedSectionId = sectionIdFromTitle(record.category || "Works");
+  $("#cvDetailEditingSection").value = savedSectionId;
+  $("#cvDetailSection").value = savedSectionId;
+  $("#cvDetailEditingId").value = `record:${record.id}`;
   saveState();
   renderCareerDocuments();
 }
@@ -2427,6 +2472,8 @@ async function saveRecord(event) {
     fileData,
     attachmentId,
     attachmentUrl,
+    cvDate: existing?.cvDate || "",
+    cvMeta: existing?.cvMeta || "",
     description: $("#recordDescription").value.trim(),
     bullets: parseBulletLines($("#recordBullets").value)
   };
@@ -2443,7 +2490,7 @@ function saveRate(event) {
   if (existing && !window.confirm("Save the updated rate details?")) return;
   const rate = {
     id: $("#rateId").value || uid(),
-    tutor: $("#rateTutor").value,
+    tutor: existing?.tutor || CURRENT_RATE_TUTOR,
     classType: $("#rateClassType").value,
     mode: $("#rateMode").value ? normalizeModeLabel($("#rateMode").value) : "",
     packageName: $("#ratePackage").value,
@@ -2452,6 +2499,7 @@ function saveRate(event) {
   upsert("rates", rate);
   $("#rateForm").reset();
   $("#rateId").value = "";
+  fillSelect($("#rateTutor"), [CURRENT_RATE_TUTOR], CURRENT_RATE_TUTOR);
   saveState();
   render();
 }
@@ -2558,7 +2606,7 @@ function editRate(id) {
   const rate = state.rates.find((item) => item.id === id);
   if (!rate) return;
   $("#rateId").value = rate.id;
-  $("#rateTutor").value = rate.tutor;
+  fillSelect($("#rateTutor"), uniqueDisplayValues([rate.tutor, CURRENT_RATE_TUTOR]), rate.tutor || CURRENT_RATE_TUTOR);
   $("#rateClassType").value = rate.classType;
   $("#rateMode").value = rate.mode;
   $("#ratePackage").value = rate.packageName;
@@ -2662,14 +2710,14 @@ function setSuggestedRate() {
 function lookupRate(session) {
   const scoreRate = (rate) => {
     let score = 0;
-    if (rate.tutor === session.tutor) score += 16;
-    if (["All Tutors", "Group Class", "Graduate Tutor"].includes(rate.tutor)) score += 8;
+    if (rate.tutor === CURRENT_RATE_TUTOR) score += 16;
     if (rate.classType === session.classType) score += 4;
     if (sameMode(rate.mode, session.mode)) score += 2;
     if (rate.packageName === session.packageName) score += 1;
     return score;
   };
   const candidates = state.rates
+    .filter((rate) => rate.tutor === CURRENT_RATE_TUTOR)
     .filter((rate) => rate.classType === session.classType)
     .filter((rate) => sameMode(rate.mode, session.mode))
     .filter((rate) => rate.packageName === session.packageName)
