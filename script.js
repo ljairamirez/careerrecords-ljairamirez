@@ -2063,6 +2063,7 @@ function updatePersonalSessionPackageOptions(selected = "") {
 }
 
 function nextPersonalPackageLabel(selected = "", options = {}) {
+  selected = normalizePackageEntryLabel(selected);
   const student = normalizeStudentName($("#personalSessionStudent")?.value.trim() || "");
   if (!student) return selected || "";
   const summaries = packageSummaries((state.personalSessions || []).filter((session) => session.student === student));
@@ -2076,9 +2077,15 @@ function nextPersonalPackageLabel(selected = "", options = {}) {
   return `PACKAGE ${Math.max(0, ...numbers) + 1}`;
 }
 
+function normalizePackageEntryLabel(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(?:package\s*)?(\d+)$/i);
+  return match ? `PACKAGE ${Number(match[1])}` : text;
+}
+
 function samePackageLabel(a, b) {
-  const first = String(a || "").trim();
-  const second = String(b || "").trim();
+  const first = normalizePackageEntryLabel(a);
+  const second = normalizePackageEntryLabel(b);
   if (!first || !second) return false;
   const firstNo = packageNumber(first);
   const secondNo = packageNumber(second);
@@ -2401,7 +2408,8 @@ function savePersonalSession(event) {
   if (existing && !window.confirm("Save the updated personal session details?")) return;
   const hours = Number($("#personalSessionHours").value || 0);
   const studentName = normalizeStudentName($("#personalSessionStudent").value.trim());
-  const packageLabel = existing?.packageLabel || nextPersonalPackageLabel($("#personalSessionPackageLabel").value.trim());
+  const selectedPackageLabel = $("#personalSessionPackageLabel").value.trim() || existing?.packageLabel || existing?.packageName || "";
+  const packageLabel = nextPersonalPackageLabel(selectedPackageLabel, { editing: Boolean(existing) });
   const rate = Number($("#personalSessionRate").value || 0);
   const session = {
     id,
@@ -2577,6 +2585,7 @@ function editPersonalSession(id) {
   $("#personalSessionStudent").value = session.student;
   $("#personalSessionPackage").value = session.packageName || session.packageLabel;
   $("#personalSessionPackageLabel").value = session.packageLabel || session.packageName || "";
+  updatePersonalSessionPackageOptions(session.packageLabel || session.packageName || "");
   $("#personalSessionClassType").value = session.classType;
   $("#personalSessionMode").value = session.mode;
   $("#personalSessionRate").value = session.rate;
