@@ -123,6 +123,16 @@ const sourceCvSections = [
           "Performed tutoring sessions for elementary and high school students, particularly in Mathematics and related subjects.",
           "Served as lecturer for review sessions for college entrance tests (CETs)."
         ]
+      },
+      {
+        title: "Freelance Programmer / Web Developer",
+        date: "2024 - Present",
+        meta: "Self-employed / Commission-based",
+        bullets: [
+          "Created websites and web-based tools for freelance and commission-based projects.",
+          "Provided programming support for thesis-related work, academic tasks, and other technical commissions.",
+          "Handled basic web deployment workflows and project setup for browser-based applications."
+        ]
       }
     ]
   },
@@ -154,6 +164,13 @@ const sourceCvSections = [
         bullets: [
           "Demonstrates adaptability and a strong willingness to learn when given opportunities.",
           "Can effectively perform onsite, online, or in a hybrid setup."
+        ]
+      },
+      {
+        title: "Programming and Web Deployment",
+        bullets: [
+          "Major programming languages and tools include HTML, Python, Java, JavaScript, Google Earth Engine, and R.",
+          "Background in web deployment, geospatial scripting, data automation, and other software platforms for academic, research, and web-based projects."
         ]
       }
     ]
@@ -705,17 +722,13 @@ async function initializeCloudSync() {
     if (payload?.state) {
       const remoteState = migrateState(payload.state);
       cloudSync.lastSavedAt = payload.updatedAt || "";
-      if (localStateShouldWinCloud(state, payload.updatedAt, remoteState)) {
-        cloudSync.dirty = true;
-        await syncCloudSave(true);
-      } else {
-        state = remoteState;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        cloudSync.dirty = false;
-        hydrateControls();
-        render();
-        migrateLegacyRecordAttachments();
-      }
+      state = remoteState;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      cloudSync.dirty = false;
+      cloudSync.saveQueued = false;
+      hydrateControls();
+      render();
+      migrateLegacyRecordAttachments();
     } else if (hadLocalStateAtStartup) {
       await syncCloudSave(true);
     } else {
@@ -741,15 +754,8 @@ async function initializeCloudSync() {
 }
 }
 
-function localStateShouldWinCloud(localState, remoteUpdatedAt, remoteState) {
-  if (!hadLocalStateAtStartup && !hadCurrentSeedAtStartup) return false;
-  const localUpdatedAt = localState?.localUpdatedAt || "";
-  if (currentMonthSessionHistoryIsAhead(localState, remoteState)) return true;
-  if (localUpdatedAt) {
-    if (!remoteUpdatedAt) return true;
-    return new Date(localUpdatedAt).getTime() > new Date(remoteUpdatedAt).getTime();
-  }
-  return currentMonthSessionHistoryIsAhead(localState, remoteState);
+function localStateShouldWinCloud() {
+  return false;
 }
 
 function currentMonthSessionHistoryIsAhead(localState, remoteState) {
@@ -1548,9 +1554,7 @@ function renderArchive() {
   const totalEver = totalPayrollEverSince();
   const importedClaimed = sum(state.claimHistory || [], (claim) => Number(claim.amount || 0));
   const sessionClaimed = sum(state.sessions.filter(isClaimedStatus), totalPay);
-  const claimRows = (state.claimHistory || []).length
-    ? [...state.claimHistory].sort((a, b) => b.claimDate.localeCompare(a.claimDate))
-    : claimHistoryFromSessions();
+  const claimRows = archiveClaimRows();
 
   $("#archiveMetrics").innerHTML = [
     metric("Total Claimed Payroll", money(importedClaimed || sessionClaimed), `${claimRows.length} claim dates`),
@@ -1558,9 +1562,41 @@ function renderArchive() {
     metric("Current Unclaimed", money(currentUnclaimedTotal()), "open or ready for claiming")
   ].join("");
 
-  $("#archiveRows").innerHTML = claimRows.map((claim) => (
-    `<tr><td>${formatDate(claim.claimDate)}</td><td>${escapeHtml(claim.label || "Claimed Payroll")}</td><td>${escapeHtml(claim.logs || "")}</td><td>${money(claim.amount)}</td></tr>`
+  $("#archiveRows").innerHTML = claimRows.map((claim, index) => (
+    `<tr><td>${formatDate(claim.claimDate)}</td><td>${escapeHtml(claim.label || "Claimed Payroll")}</td><td>${escapeHtml(claim.logs || "")}</td><td><div class="history-amount-cell"><span>${money(claim.amount)}</span><button class="mini" type="button" data-view-claim="${index}">View</button></div></td></tr>`
   )).join("") || emptyRow(4);
+
+  $$("[data-view-claim]").forEach((button) => button.addEventListener("click", () => showClaimHistoryDetails(claimRows[Number(button.dataset.viewClaim)])));
+}
+
+function archiveClaimRows() {
+  return (state.claimHistory || []).length
+    ? [...state.claimHistory].sort((a, b) => b.claimDate.localeCompare(a.claimDate))
+    : claimHistoryFromSessions();
+}
+
+function showClaimHistoryDetails(claim) {
+  const target = $("#archiveClaimDetails");
+  if (!target || !claim) return;
+  const sessions = claimSessionsForHistory(claim);
+  const rows = sessions.map((session) => (
+    `<tr><td>${formatDate(session.date)}</td><td>${escapeHtml(session.student)}</td><td>${escapeHtml(packageLabel(session))}</td><td>${number(totalHours(session))}</td><td>${money(session.rate)}</td><td>${money(totalPay(session))}</td></tr>`
+  )).join("");
+  target.innerHTML = `<section class="panel claim-detail-panel"><div class="panel-head"><h2>${escapeHtml(claim.label || "Claimed Payroll")} - ${formatDate(claim.claimDate)}</h2><strong>${money(claim.amount || sum(sessions, totalPay))}</strong></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Student</th><th>Package</th><th>Hours</th><th>Rate</th><th>Total Pay</th></tr></thead><tbody>${rows || emptyRow(6)}</tbody></table></div></section>`;
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function claimSessionsForHistory(claim) {
+  const ids = new Set(claim.sessionIds || []);
+  if (ids.size) return state.sessions.filter((session) => ids.has(session.id)).sort((a, b) => a.date.localeCompare(b.date));
+  const sameDate = state.sessions
+    .filter((session) => session.claimDate === claim.claimDate && isClaimedStatus(session))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.student.localeCompare(b.student));
+  if (!sameDate.length) return [];
+  const claimedAmount = Number(claim.amount || 0);
+  const sameDateAmount = sum(sameDate, totalPay);
+  if (!claimedAmount || Math.abs(sameDateAmount - claimedAmount) < 0.02) return sameDate;
+  return sameDate;
 }
 
 function totalPayrollEverSince() {
@@ -2333,7 +2369,8 @@ function claimHistoryFromSessions() {
       claimDate,
       label: "Claimed Sessions",
       logs: `${sessions.length} logs`,
-      amount: sum(sessions, totalPay)
+      amount: sum(sessions, totalPay),
+      sessionIds: sessions.map((session) => session.id)
     }))
     .sort((a, b) => b.claimDate.localeCompare(a.claimDate));
 }
@@ -2759,7 +2796,8 @@ function markClaimed() {
       amount,
       logs: `${sessions.length} logs`,
       label: "Claimed Payroll",
-      source: "claiming-view"
+      source: "claiming-view",
+      sessionIds: sessions.map((session) => session.id)
     });
   }
   saveState();

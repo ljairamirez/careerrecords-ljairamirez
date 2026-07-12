@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f4f8ff;
   --surface: #ffffff;
   --surface-soft: #edf5ff;
@@ -2012,4 +2012,58 @@ tbody tr.individual-session td:first-child {
 
 .sort-actions select {
   min-height: 40px;
+}
+
+.history-amount-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.claim-history-details {
+  margin-top: 16px;
+}
+
+.claim-detail-panel .panel-head strong {
+  font-size: 18px;
+}
+
+@media print {
+  #claiming .release-head {
+    display: none !important;
+  }
+
+  #claiming .metric-grid.small {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 0 0 10px !important;
+  }
+
+  #claiming .metric {
+    min-height: 72px !important;
+    padding: 10px 10px 10px 12px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  #claiming .metric span {
+    font-size: 10px !important;
+  }
+
+  #claiming .metric strong {
+    margin-top: 5px !important;
+    font-size: 18px !important;
+  }
+
+  #claiming .metric small {
+    margin-top: 4px !important;
+    font-size: 10px !important;
+  }
+
+  #claiming table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
 }
