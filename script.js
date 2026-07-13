@@ -28,6 +28,8 @@ const PERSONAL_ACCESS_CODE = "ljairamirez";
 let currentActiveView = "dashboard";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const weekdays = days.slice(0, 5);
+const scheduleDayOptions = ["Weekday", ...days];
 
 const sourceCvSections = [
   {
@@ -307,10 +309,48 @@ function normalizeCvSections(sections) {
   });
   const byId = Object.fromEntries(normalized.map((section) => [section.id, section]));
   const defaultIds = new Set(defaults.map((section) => section.id));
-  return [
+  return ensureCvCareerAdditions([
     ...defaults.map((section) => byId[section.id] || section),
     ...normalized.filter((section) => !defaultIds.has(section.id))
+  ]);
+}
+function ensureCvCareerAdditions(sections) {
+  const additions = [
+    {
+      sectionId: "skills",
+      sectionTitle: "Skills",
+      item: {
+        id: "skill-programming-web-deployment",
+        title: "Programming and Web Deployment",
+        bullets: [
+          "Major programming languages and tools include HTML, Python, Java, JavaScript, Google Earth Engine, and R.",
+          "Background in web deployment, geospatial scripting, data automation, and other software platforms for academic, research, and web-based projects."
+        ]
+      }
+    },
+    {
+      sectionId: "work-experience",
+      sectionTitle: "Work Experience",
+      item: {
+        id: "work-freelance-programming",
+        title: "Freelance Programmer / Web Developer",
+        date: "2024 - Present",
+        meta: "Self-employed / Commission-based",
+        bullets: [
+          "Created websites and web-based tools for freelance and commission-based projects.",
+          "Provided programming support for thesis-related work, academic tasks, and other technical commissions.",
+          "Handled basic web deployment workflows and project setup for browser-based applications."
+        ]
+      }
+    }
   ];
+  additions.forEach((addition) => {
+    const section = sections.find((item) => item.id === addition.sectionId);
+    if (!section) return;
+    const exists = (section.items || []).some((item) => String(item.title || "").trim().toLowerCase() === addition.item.title.toLowerCase());
+    if (!exists) section.items.push(normalizeCvItem(addition.item, addition.sectionTitle, section.items?.length || 0));
+  });
+  return sections;
 }
 
 function normalizeCvProfile(profile = {}) {
@@ -1123,7 +1163,7 @@ function hydrateControls() {
   fillSelect($("#personalSessionClassType"), state.settings.classTypes);
   fillSelect($("#personalSessionMode"), state.settings.modes);
 
-  fillSelect($("#scheduleDay"), days);
+  fillSelect($("#scheduleDay"), scheduleDayOptions);
   fillSelect($("#scheduleStudent"), activeStudentNames());
   $("#scheduleTutor").value = "Lloyd Ramirez";
   fillSelect($("#scheduleMode"), state.settings.modes);
@@ -2552,10 +2592,13 @@ function saveRate(event) {
 function saveSchedule(event) {
   event.preventDefault();
   const existing = state.schedules.find((item) => item.id === $("#scheduleId").value);
+  const selectedDay = $("#scheduleDay").value;
+  if (existing && selectedDay === "Weekday") {
+    window.alert("Weekday can only be used when adding a new schedule. Choose one day when editing.");
+    return;
+  }
   if (existing && !window.confirm("Save the updated schedule details?")) return;
-  const schedule = {
-    id: $("#scheduleId").value || uid(),
-    day: $("#scheduleDay").value,
+  const scheduleBase = {
     start: $("#scheduleStart").value,
     end: $("#scheduleEnd").value,
     student: $("#scheduleStudent").value,
@@ -2565,7 +2608,14 @@ function saveSchedule(event) {
     status: $("#scheduleStatus").value,
     notes: $("#scheduleNotes").value.trim()
   };
-  upsert("schedules", schedule);
+  const scheduleDays = selectedDay === "Weekday" ? weekdays : [selectedDay];
+  scheduleDays.forEach((day) => {
+    upsert("schedules", {
+      id: existing ? existing.id : uid(),
+      day,
+      ...scheduleBase
+    });
+  });
   resetScheduleForm();
   saveState();
   render();
