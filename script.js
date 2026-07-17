@@ -302,12 +302,12 @@ function buildDefaultCvSections() {
         {
           id: "works-pr1me-tutorial-services",
           title: "PR1ME Tutorial Services",
-          meta: "pr1metutorialservices.vercel.app",
+          meta: "pr1metutorialservices.com",
           description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
           bullets: [
             "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
             "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
-            "Link: pr1metutorialservices.vercel.app"
+            "Link: pr1metutorialservices.com"
           ]
         }
       ]
@@ -424,12 +424,12 @@ function ensureCvCareerAdditions(sections) {
       item: {
         id: "works-pr1me-tutorial-services",
         title: "PR1ME Tutorial Services",
-        meta: "pr1metutorialservices.vercel.app",
+        meta: "pr1metutorialservices.com",
         description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
         bullets: [
           "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
           "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
-          "Link: pr1metutorialservices.vercel.app"
+          "Link: pr1metutorialservices.com"
         ]
       }
     }
@@ -441,8 +441,14 @@ function ensureCvCareerAdditions(sections) {
   additions.forEach((addition) => {
     const section = sections.find((item) => item.id === addition.sectionId);
     if (!section) return;
-    const exists = (section.items || []).some((item) => String(item.title || "").trim().toLowerCase() === addition.item.title.toLowerCase());
-    if (!exists) section.items.push(normalizeCvItem(addition.item, addition.sectionTitle, section.items?.length || 0));
+    const existing = (section.items || []).find((item) => String(item.title || "").trim().toLowerCase() === addition.item.title.toLowerCase());
+    if (existing && addition.item.id === "works-pr1me-tutorial-services") {
+      existing.meta = addition.item.meta;
+      existing.description = addition.item.description;
+      existing.bullets = [...addition.item.bullets];
+    } else if (!existing) {
+      section.items.push(normalizeCvItem(addition.item, addition.sectionTitle, section.items?.length || 0));
+    }
   });
   return sections;
 }
@@ -2008,16 +2014,16 @@ function cvItemHtml(item, options = {}) {
     : "";
   const bulletHtml = item.bullets?.length
     ? options.sectionId === "works"
-      ? `<div class="document-inline-details">${item.bullets.map((bullet) => `<p>${escapeHtml(bullet)}</p>`).join("")}</div>`
-      : `<ul>${item.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>`
+      ? `<div class="document-inline-details">${item.bullets.map((bullet) => `<p>${linkifyText(bullet)}</p>`).join("")}</div>`
+      : `<ul>${item.bullets.map((bullet) => `<li>${linkifyText(bullet)}</li>`).join("")}</ul>`
     : "";
   return `<article class="document-item cv-detail-item">
     <div class="document-item-main">
       ${selector}
       <div class="document-item-body">
         <div class="document-item-title"><strong>${escapeHtml(item.title)}</strong>${item.date ? `<span>${escapeHtml(item.date)}</span>` : ""}</div>
-        ${item.meta ? `<p class="document-item-meta">${escapeHtml(item.meta)}</p>` : ""}
-        ${item.description ? `<p class="${item.descriptionItalic ? "document-item-description is-italic" : "document-item-description"}">${escapeHtml(item.description)}</p>` : ""}
+        ${item.meta ? `<p class="document-item-meta">${linkifyText(item.meta)}</p>` : ""}
+        ${item.description ? `<p class="${item.descriptionItalic ? "document-item-description is-italic" : "document-item-description"}">${linkifyText(item.description)}</p>` : ""}
         ${bulletHtml}
       </div>
       ${options.resume ? removeButton : editButton}
@@ -3726,6 +3732,16 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+function linkifyText(value) {
+  const escaped = escapeHtml(value);
+  return escaped.replace(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s<]*)?)/gi, (match) => {
+    const trailing = match.match(/[.,;:!?)]$/)?.[0] || "";
+    const cleanMatch = trailing ? match.slice(0, -1) : match;
+    const href = /^https?:\/\//i.test(cleanMatch) ? cleanMatch : `https://${cleanMatch}`;
+    return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${cleanMatch}</a>${trailing}`;
+  });
 }
 
 

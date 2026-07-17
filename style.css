@@ -1285,6 +1285,13 @@ tbody tr.individual-session td:first-child {
   font-style: italic;
 }
 
+.document-item a {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .document-item p {
   margin: 0;
   color: var(--muted);
