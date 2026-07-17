@@ -3,6 +3,7 @@ const CLOUD_STATE_ENDPOINT = "/api/salary-state";
 const CLOUD_FILE_ENDPOINT = "/api/record-file";
 const CLOUD_SYNC_DEBOUNCE_MS = 900;
 const CLOUD_REFRESH_MS = 15000;
+const DEFAULT_SESSION_START_TIME = "12:00";
 const CURRENT_RATE_TUTOR = "Graduate Tutor";
 const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
@@ -30,6 +31,14 @@ let currentActiveView = "dashboard";
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const weekdays = days.slice(0, 5);
 const scheduleDayOptions = ["Weekday", ...days];
+const studyBuddyRatePackages = [
+  { packageName: "Pair (SB)", amount: 400 },
+  { packageName: "Trio (SB)", amount: 450 },
+  { packageName: "Group (4)", amount: 450 },
+  { packageName: "Group (5-9)", amount: 500 },
+  { packageName: "Group (10+)", amount: 550 }
+];
+const studyBuddyRateModes = ["Virtual", "F2F", "Hybrid"];
 
 const sourceCvSections = [
   {
@@ -142,10 +151,24 @@ const sourceCvSections = [
     title: "Skills",
     entries: [
       {
-        title: "Surveying and Mapping",
+        title: "Surveying",
         bullets: [
-          "Hands-on experience in traditional surveying techniques and the use of remote sensing, GIS, and photogrammetry for data processing and analysis.",
-          "Experienced in geospatial data handling and map creation using GIS platforms such as ArcGIS and QGIS, and CAD-based platforms such as Civil 3D and Autodesk."
+          "Hands-on experience in land surveying workflows, field measurements, and preparation of survey-related outputs.",
+          "Experienced with aerial or drone-assisted surveying exposure for spatial data capture and project documentation."
+        ]
+      },
+      {
+        title: "Mapping and GIS",
+        bullets: [
+          "Experienced in geospatial data handling, map creation, and spatial analysis using GIS platforms such as ArcGIS and QGIS.",
+          "Background in remote sensing, photogrammetry, and CAD-based mapping workflows using tools such as Civil 3D and Autodesk platforms."
+        ]
+      },
+      {
+        title: "Drone Operations",
+        bullets: [
+          "Has practical experience flying drones for aerial observation and survey-related documentation, currently uncertified.",
+          "Familiar with basic flight handling, visual inspection support, and image capture for mapping or project reference."
         ]
       },
       {
@@ -256,6 +279,11 @@ function buildDefaultCvSections() {
       items: []
     },
     {
+      id: "professional-development",
+      title: "Professional Development",
+      items: []
+    },
+    {
       id: "works",
       title: "Works",
       items: [
@@ -270,6 +298,17 @@ function buildDefaultCvSections() {
           title: "From Fields to Cities: Comparison of Support Vector Machine and Random Forest Classifiers for a Multi-Temporal Analysis of Urban Growth in Cavite",
           meta: "Unpublished undergraduate research in partial fulfillment of GsE 189: Remote Sensing: Theory and Applications",
           bullets: ["K.A.T. Escabarte, C.A.R. Manago, J.L.C. Ramirez, E.E.E. Elazegui"]
+        },
+        {
+          id: "works-pr1me-tutorial-services",
+          title: "PR1ME Tutorial Services",
+          meta: "pr1metutorialservices.vercel.app",
+          description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
+          bullets: [
+            "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
+            "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
+            "Link: pr1metutorialservices.vercel.app"
+          ]
         }
       ]
     },
@@ -320,6 +359,42 @@ function ensureCvCareerAdditions(sections) {
       sectionId: "skills",
       sectionTitle: "Skills",
       item: {
+        id: "skill-surveying",
+        title: "Surveying",
+        bullets: [
+          "Hands-on experience in land surveying workflows, field measurements, and preparation of survey-related outputs.",
+          "Experienced with aerial or drone-assisted surveying exposure for spatial data capture and project documentation."
+        ]
+      }
+    },
+    {
+      sectionId: "skills",
+      sectionTitle: "Skills",
+      item: {
+        id: "skill-mapping-gis",
+        title: "Mapping and GIS",
+        bullets: [
+          "Experienced in geospatial data handling, map creation, and spatial analysis using GIS platforms such as ArcGIS and QGIS.",
+          "Background in remote sensing, photogrammetry, and CAD-based mapping workflows using tools such as Civil 3D and Autodesk platforms."
+        ]
+      }
+    },
+    {
+      sectionId: "skills",
+      sectionTitle: "Skills",
+      item: {
+        id: "skill-drone-operations",
+        title: "Drone Operations",
+        bullets: [
+          "Has practical experience flying drones for aerial observation and survey-related documentation, currently uncertified.",
+          "Familiar with basic flight handling, visual inspection support, and image capture for mapping or project reference."
+        ]
+      }
+    },
+    {
+      sectionId: "skills",
+      sectionTitle: "Skills",
+      item: {
         id: "skill-programming-web-deployment",
         title: "Programming and Web Deployment",
         bullets: [
@@ -342,8 +417,27 @@ function ensureCvCareerAdditions(sections) {
           "Handled basic web deployment workflows and project setup for browser-based applications."
         ]
       }
+    },
+    {
+      sectionId: "works",
+      sectionTitle: "Works",
+      item: {
+        id: "works-pr1me-tutorial-services",
+        title: "PR1ME Tutorial Services",
+        meta: "pr1metutorialservices.vercel.app",
+        description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
+        bullets: [
+          "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
+          "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
+          "Link: pr1metutorialservices.vercel.app"
+        ]
+      }
     }
   ];
+  const skillsSection = sections.find((item) => item.id === "skills");
+  if (skillsSection) {
+    skillsSection.items = (skillsSection.items || []).filter((item) => String(item.title || "").trim().toLowerCase() !== "surveying and mapping");
+  }
   additions.forEach((addition) => {
     const section = sections.find((item) => item.id === addition.sectionId);
     if (!section) return;
@@ -622,6 +716,43 @@ function buildInitialState() {
   return base;
 }
 
+function ensureStudyBuddyRates(targetState) {
+  targetState.settings ||= structuredClone(defaultState.settings);
+  targetState.settings.packages = uniqueDisplayValues([
+    ...(targetState.settings.packages || []).map((packageName) => packageName === "Group (5 and up)" ? "Group (5-9)" : packageName),
+    ...studyBuddyRatePackages.map((rate) => rate.packageName)
+  ]);
+  targetState.rates ||= [];
+  targetState.rates.forEach((rate) => {
+    if (rate.tutor === CURRENT_RATE_TUTOR && rate.classType === "Group" && rate.packageName === "Group (5 and up)") {
+      rate.packageName = "Group (5-9)";
+      rate.amount = 500;
+    }
+  });
+  studyBuddyRatePackages.forEach((ratePackage) => {
+    studyBuddyRateModes.forEach((mode) => {
+      const existing = targetState.rates.find((rate) => (
+        rate.tutor === CURRENT_RATE_TUTOR &&
+        rate.classType === "Group" &&
+        sameMode(rate.mode, mode) &&
+        rate.packageName === ratePackage.packageName
+      ));
+      if (existing) {
+        existing.amount = ratePackage.amount;
+        existing.mode = mode;
+      } else {
+        targetState.rates.push({
+          id: uid(),
+          tutor: CURRENT_RATE_TUTOR,
+          classType: "Group",
+          mode,
+          packageName: ratePackage.packageName,
+          amount: ratePackage.amount
+        });
+      }
+    });
+  });
+}
 function migrateState(inputState) {
   const next = inputState || buildInitialState();
   const imported = window.salarySheetWorkbookData;
@@ -631,6 +762,7 @@ function migrateState(inputState) {
 
   next.settings ||= structuredClone(defaultState.settings);
   next.settings.modes = ["Virtual", "F2F", "Hybrid"];
+  ensureStudyBuddyRates(next);
   next.settings.students = uniqueNormalizedNames(
   (next.settings.students || [])
     .map(normalizeStudentName)
@@ -2739,7 +2871,7 @@ function resetSessionForm() {
   $("#sessionForm").reset();
   $("#sessionId").value = "";
   $("#sessionDate").value = new Date().toISOString().slice(0, 10);
-  $("#sessionStart").value = "";
+  $("#sessionStart").value = DEFAULT_SESSION_START_TIME;
   $("#sessionEnd").value = "";
   $("#sessionStudents").value = 1;
   $("#sessionHours").value = "";
@@ -2756,7 +2888,7 @@ function resetPersonalSessionForm() {
   $("#personalSessionForm").reset();
   $("#personalSessionId").value = "";
   $("#personalSessionDate").value = new Date().toISOString().slice(0, 10);
-  $("#personalSessionStart").value = "";
+  $("#personalSessionStart").value = DEFAULT_SESSION_START_TIME;
   $("#personalSessionEnd").value = "";
   $("#personalSessionStudent").value = "";
   $("#personalSessionPackage").value = "";

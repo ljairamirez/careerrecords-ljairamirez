@@ -138,7 +138,7 @@
         <form class="grid-form session-form-grid" id="sessionForm">
           <input type="hidden" id="sessionId">
           <label><span>Date</span><input id="sessionDate" type="date" required></label>
-          <label><span>Start</span><input id="sessionStart" type="time" required></label>
+          <label><span>Start</span><input id="sessionStart" type="time" value="12:00" required></label>
           <label><span>End</span><input id="sessionEnd" type="time" required></label>
           <input type="hidden" id="sessionTutor" value="Lloyd Ramirez">
           <label><span>Student / Program</span><input id="sessionStudent" list="activeStudentOptions" required placeholder="Type or select"></label>
@@ -328,7 +328,7 @@
         <form class="grid-form session-form-grid" id="personalSessionForm">
           <input type="hidden" id="personalSessionId">
           <label><span>Date</span><input id="personalSessionDate" type="date" required></label>
-          <label><span>Start</span><input id="personalSessionStart" type="time" required></label>
+          <label><span>Start</span><input id="personalSessionStart" type="time" value="12:00" required></label>
           <label><span>End</span><input id="personalSessionEnd" type="time" required></label>
           <label><span>Student</span><input id="personalSessionStudent" list="personalStudentOptions" required placeholder="Type or select"></label>
           <datalist id="personalStudentOptions"></datalist>
@@ -472,6 +472,7 @@
             <option>Summary</option>
             <option>Education</option>
             <option>Licenses and Certifications</option>
+            <option>Professional Development</option>
             <option>Works</option>
             <option>Work Experience</option>
             <option>Skills</option>
@@ -548,6 +549,7 @@
               <option value="summary">Summary</option>
               <option value="education">Education</option>
               <option value="licenses-and-certifications">Licenses and Certifications</option>
+              <option value="professional-development">Professional Development</option>
               <option value="works">Works</option>
               <option value="work-experience">Work Experience</option>
               <option value="skills">Skills</option>
@@ -584,7 +586,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=80"></script>
+  <script src="script.js?v=86"></script>
 </body>
 </html>
 
