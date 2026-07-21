@@ -50,7 +50,7 @@ const sourceCvSections = [
   {
     title: "Summary",
     paragraphs: [
-      "Detail-oriented and highly motivated 4th-year Geodetic Engineering student at the University of the Philippines Diliman, with hands-on experience in traditional surveying, remote sensing, GIS, and photogrammetry. Eager to take on new challenges, continuously learn, and grow professionally."
+      "Detail-oriented and highly motivated Bachelor of Science in Geodetic Engineering graduate from the University of the Philippines Diliman, with hands-on experience in traditional surveying, remote sensing, GIS, and photogrammetry. Eager to take on new challenges, continuously learn, and grow professionally."
     ]
   },
   {
@@ -58,10 +58,10 @@ const sourceCvSections = [
     entries: [
       {
         title: "Bachelor of Science in Geodetic Engineering",
-        date: "August 2021 - Present",
+        date: "August 2021 - 2026",
         meta: "University of the Philippines Diliman, Quezon City, Metro Manila, Philippines",
         bullets: [
-          "DOST-SEI Scholar (2021-Present)",
+          "DOST-SEI Scholar (2021-2026)",
           "Undergraduate Research: Impact of Lighting Parameters on 3D Reconstruction of an Archaeological Artifact Replica Using Close Range Photogrammetry (unpublished), in partial fulfillment of GsE 188: Modern Photogrammetry.",
           "Undergraduate Research: From Fields to Cities: Comparison of Support Vector Machine and Random Forest Classifiers for a Multi-Temporal Analysis of Urban Growth in Cavite (unpublished), in partial fulfillment of GsE 189: Remote Sensing: Theory and Applications."
         ]
@@ -246,7 +246,7 @@ function buildDefaultCvSections() {
       items: [{
         id: "summary-main",
         title: "Professional Summary",
-        description: "Detail-oriented and highly motivated 4th-year Geodetic Engineering student at the University of the Philippines Diliman, with hands-on experience in traditional surveying, remote sensing, GIS, and photogrammetry. Eager to take on new challenges, continuously learn, and grow professionally."
+        description: "Detail-oriented and highly motivated Bachelor of Science in Geodetic Engineering graduate from the University of the Philippines Diliman, with hands-on experience in traditional surveying, remote sensing, GIS, and photogrammetry. Eager to take on new challenges, continuously learn, and grow professionally."
       }]
     },
     {
@@ -256,9 +256,9 @@ function buildDefaultCvSections() {
         {
           id: "education-upd",
           title: "Bachelor of Science in Geodetic Engineering",
-          date: "August 2021 - Present",
+          date: "August 2021 - 2026",
           meta: "University of the Philippines Diliman, Quezon City, Metro Manila, Philippines",
-          bullets: ["DOST-SEI Scholar (2021-Present)"]
+          bullets: ["DOST-SEI Scholar (2021-2026)"]
         },
         {
           id: "education-pshs",
@@ -360,10 +360,28 @@ function normalizeCvSections(sections) {
   });
   const byId = Object.fromEntries(normalized.map((section) => [section.id, section]));
   const defaultIds = new Set(defaults.map((section) => section.id));
-  return ensureCvCareerAdditions([
+  return dedupeCvSectionItems(ensureCvCareerAdditions([
     ...defaults.map((section) => byId[section.id] || section),
     ...normalized.filter((section) => !defaultIds.has(section.id))
-  ]);
+  ]));
+}
+
+function dedupeCvSectionItems(sections) {
+  return (sections || []).map((section) => {
+    const seen = new Set();
+    return {
+      ...section,
+      items: (section.items || []).filter((item) => {
+        const titleKey = String(item.title || "").trim().toLowerCase();
+        const key = section.id === "professional-development"
+          ? titleKey
+          : [titleKey, item.date || "", item.meta || "", item.description || ""].join("|").toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+    };
+  });
 }
 function ensureCvCareerAdditions(sections) {
   const additions = [
@@ -477,6 +495,20 @@ function ensureCvCareerAdditions(sections) {
       section.items.push(normalizeCvItem(addition.item, addition.sectionTitle, section.items?.length || 0));
     }
   });
+  const graduateSummary = "Detail-oriented and highly motivated Bachelor of Science in Geodetic Engineering graduate from the University of the Philippines Diliman, with hands-on experience in traditional surveying, remote sensing, GIS, and photogrammetry. Eager to take on new challenges, continuously learn, and grow professionally.";
+  const summarySection = sections.find((item) => item.id === "summary");
+  const summaryItem = summarySection?.items?.find((item) => item.id === "summary-main" || /professional summary/i.test(item.title || ""));
+  if (summaryItem && /4th-year|student at the University of the Philippines Diliman/i.test(summaryItem.description || "")) {
+    summaryItem.description = graduateSummary;
+  }
+  const educationSection = sections.find((item) => item.id === "education");
+  const geodeticDegree = educationSection?.items?.find((item) => /bachelor of science in geodetic engineering/i.test(item.title || ""));
+  if (geodeticDegree) {
+    if (/present/i.test(geodeticDegree.date || "")) geodeticDegree.date = "August 2021 - 2026";
+    geodeticDegree.bullets = (geodeticDegree.bullets || []).map((bullet) =>
+      /DOST-SEI Scholar \(2021-Present\)/i.test(bullet) ? "DOST-SEI Scholar (2021-2026)" : bullet
+    );
+  }
   return sections;
 }
 
@@ -1976,6 +2008,8 @@ function cvSectionGroups() {
     const section = byId[sectionId] || byId.works || sections[0];
     section.items.push(recordToCvItem(record));
   });
+  const cleanedSections = dedupeCvSectionItems(sections);
+  sections.splice(0, sections.length, ...cleanedSections);
   sections.forEach((section) => {
     if (section.id === "work-experience") {
       section.items = section.items
@@ -2169,8 +2203,9 @@ function saveCvDetail(event) {
   });
   if (targetSection.id === originalSection.id) targetSection.items.splice(itemIndex, 0, item);
   else targetSection.items.push(item);
-  $("#cvDetailEditingSection").value = targetSection.id;
+  state.cvSections = dedupeCvSectionItems(state.cvSections);
   saveState();
+  resetCvDetailEditor();
   renderCareerDocuments();
 }
 
@@ -2188,11 +2223,8 @@ function saveCvRecordDetail(recordId, targetSectionId) {
     description: $("#cvDetailDescription")?.value.trim() || "",
     bullets: ($("#cvDetailBullets")?.value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
   });
-  const savedSectionId = sectionIdFromTitle(record.category || "Works");
-  $("#cvDetailEditingSection").value = savedSectionId;
-  $("#cvDetailSection").value = savedSectionId;
-  $("#cvDetailEditingId").value = `record:${record.id}`;
   saveState();
+  resetCvDetailEditor();
   renderCareerDocuments();
 }
 
