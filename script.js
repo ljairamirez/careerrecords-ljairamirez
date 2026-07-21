@@ -279,11 +279,6 @@ function buildDefaultCvSections() {
       items: []
     },
     {
-      id: "professional-development",
-      title: "Professional Development",
-      items: []
-    },
-    {
       id: "works",
       title: "Works",
       items: [
@@ -316,6 +311,23 @@ function buildDefaultCvSections() {
       id: "work-experience",
       title: "Work Experience",
       items: sourceCvSections.find((section) => section.title === "Work Experience").entries.map((entry, index) => ({ id: `work-${index + 1}`, ...entry }))
+    },
+    {
+      id: "professional-development",
+      title: "Professional Development",
+      items: [
+        {
+          id: "professional-development-future-earth-cns",
+          title: "Regional Future Earth Meta-Network and Core Network Systems (CNS) Workshop and Field Visits",
+          date: "March 28-29, 2026",
+          meta: "BFAR-PFO New Washington and Boracay Island, Aklan, Philippines",
+          description: "Participant",
+          bullets: [
+            "Attended seminars and workshops on sustainable environmental protection.",
+            "Observed automated aerial surveying workflows and drone flight demonstrations."
+          ]
+        }
+      ]
     },
     {
       id: "skills",
@@ -415,6 +427,21 @@ function ensureCvCareerAdditions(sections) {
           "Created websites and web-based tools for freelance and commission-based projects.",
           "Provided programming support for thesis-related work, academic tasks, and other technical commissions.",
           "Handled basic web deployment workflows and project setup for browser-based applications."
+        ]
+      }
+    },
+    {
+      sectionId: "professional-development",
+      sectionTitle: "Professional Development",
+      item: {
+        id: "professional-development-future-earth-cns",
+        title: "Regional Future Earth Meta-Network and Core Network Systems (CNS) Workshop and Field Visits",
+        date: "March 28-29, 2026",
+        meta: "BFAR-PFO New Washington and Boracay Island, Aklan, Philippines",
+        description: "Participant",
+        bullets: [
+          "Attended seminars and workshops on sustainable environmental protection.",
+          "Observed automated aerial surveying workflows and drone flight demonstrations."
         ]
       }
     },
@@ -1302,7 +1329,7 @@ function hydrateControls() {
   fillSelect($("#personalSessionMode"), state.settings.modes);
 
   fillSelect($("#scheduleDay"), scheduleDayOptions);
-  fillSelect($("#scheduleStudent"), activeStudentNames());
+  fillDatalist($("#scheduleStudentOptions"), activeStudentNames());
   $("#scheduleTutor").value = "Lloyd Ramirez";
   fillSelect($("#scheduleMode"), state.settings.modes);
   fillSelect($("#scheduleFrequency"), state.settings.frequencies);
@@ -2423,7 +2450,7 @@ function updateStudentRecord(key, changes) {
   hydrateControls();
 }
 
-function ensureStudent(name) {
+function ensureStudent(name, source = "session log") {
   const cleanName = String(name || "").trim();
 
   if (!cleanName) return;
@@ -2450,7 +2477,7 @@ function ensureStudent(name) {
       key: cleanName,
       name: cleanName,
       status: "Active",
-      notes: "Created from session log"
+      notes: `Created from ${source}`
     });
   }
 
@@ -2739,13 +2766,15 @@ function saveSchedule(event) {
   const scheduleBase = {
     start: $("#scheduleStart").value,
     end: $("#scheduleEnd").value,
-    student: $("#scheduleStudent").value,
+    student: normalizeStudentName($("#scheduleStudent").value),
     tutor: $("#scheduleTutor").value,
     mode: $("#scheduleMode").value ? normalizeModeLabel($("#scheduleMode").value) : "",
     frequency: $("#scheduleFrequency").value,
     status: $("#scheduleStatus").value,
     notes: $("#scheduleNotes").value.trim()
   };
+  if (!scheduleBase.student) return;
+  ensureStudent(scheduleBase.student, "schedule");
   const scheduleDays = selectedDay === "Weekday" ? weekdays : [selectedDay];
   scheduleDays.forEach((day) => {
     upsert("schedules", {
@@ -2756,6 +2785,7 @@ function saveSchedule(event) {
   });
   resetScheduleForm();
   saveState();
+  hydrateControls();
   render();
 }
 

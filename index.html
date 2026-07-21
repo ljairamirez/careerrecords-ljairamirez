@@ -204,7 +204,7 @@
           <label><span>Day</span><select id="scheduleDay"></select></label>
           <label><span>Start</span><input id="scheduleStart" type="time" required></label>
           <label><span>End</span><input id="scheduleEnd" type="time" required></label>
-          <label><span>Student / Program</span><select id="scheduleStudent"></select></label>
+          <label><span>Student / Program</span><input id="scheduleStudent" type="text" list="scheduleStudentOptions" autocomplete="off" required placeholder="Type or select student/group"><datalist id="scheduleStudentOptions"></datalist></label>
           <input type="hidden" id="scheduleTutor" value="Lloyd Ramirez">
           <label><span>Mode</span><select id="scheduleMode"></select></label>
           <label><span>Frequency</span><select id="scheduleFrequency"></select></label>
@@ -472,9 +472,9 @@
             <option>Summary</option>
             <option>Education</option>
             <option>Licenses and Certifications</option>
-            <option>Professional Development</option>
             <option>Works</option>
             <option>Work Experience</option>
+            <option>Professional Development</option>
             <option>Skills</option>
             <option>Affiliations and Leadership</option>
             <option>Records Only</option>
@@ -549,9 +549,9 @@
               <option value="summary">Summary</option>
               <option value="education">Education</option>
               <option value="licenses-and-certifications">Licenses and Certifications</option>
-              <option value="professional-development">Professional Development</option>
               <option value="works">Works</option>
               <option value="work-experience">Work Experience</option>
+              <option value="professional-development">Professional Development</option>
               <option value="skills">Skills</option>
               <option value="affiliations-and-leadership">Affiliations and Leadership</option>
             </select></label>
@@ -586,7 +586,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=87"></script>
+  <script src="script.js?v=90"></script>
 </body>
 </html>
 
