@@ -18945,7 +18945,8 @@ window.salarySheetCurrentState = {
                                         "Honorary Member (1AY-2AY 2023-2024)",
                                         "Oblation Esports Minokawa Player (1AY-2AY 2023-2024)",
                                         "Honorary Member (2AY 2025-2026)",
-                                        "Diliman Games 2026 MLBB Co-Organizer (May 2026)"
+                                        "Diliman Games 2026 MLBB Co-Organizer (May 2026)",
+                                        "Oblation Esports Arimaonga Player (2AY 2025-2026)"
                                     ]
                     },
                     {

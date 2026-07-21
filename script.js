@@ -5,6 +5,8 @@ const CLOUD_SYNC_DEBOUNCE_MS = 900;
 const CLOUD_REFRESH_MS = 15000;
 const DEFAULT_SESSION_START_TIME = "12:00";
 const CURRENT_RATE_TUTOR = "Graduate Tutor";
+const UPGG_TITLE = "University of the Philippines Gaming Guild (UPGG)";
+const UPGG_ARIMAONGA_BULLET = "Oblation Esports Arimaonga Player (2AY 2025-2026)";
 const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
@@ -555,6 +557,42 @@ function normalizeCvSectionId(id) {
   return value;
 }
 
+function ensureUpggArimaongaEntry(targetState) {
+  const hasBullet = (items = []) => items.some((item) => String(item || "").trim().toLowerCase() === UPGG_ARIMAONGA_BULLET.toLowerCase());
+  const addBullet = (item) => {
+    item.bullets = Array.isArray(item.bullets) ? item.bullets : parseBulletLines(item.bullets || "");
+    if (!hasBullet(item.bullets)) item.bullets.push(UPGG_ARIMAONGA_BULLET);
+  };
+  const isUpgg = (item) => /\bUPGG\b|University of the Philippines Gaming Guild/i.test(item?.title || "");
+  targetState.records ||= [];
+  const upggRecord = targetState.records.find((record) =>
+    sectionIdFromTitle(record.category || "") === "affiliations-and-leadership" && isUpgg(record)
+  );
+  if (upggRecord) {
+    addBullet(upggRecord);
+  } else {
+    targetState.records.push({
+      id: "record-upgg-affiliation",
+      startDate: "",
+      endDate: "",
+      category: "Affiliations and Leadership",
+      title: UPGG_TITLE,
+      organization: "",
+      location: "",
+      file: "",
+      fileName: "",
+      fileData: "",
+      attachmentId: "",
+      attachmentUrl: "",
+      description: "",
+      bullets: [UPGG_ARIMAONGA_BULLET]
+    });
+  }
+  const affiliationSection = (targetState.cvSections || []).find((section) => section.id === "affiliations-and-leadership");
+  const upggCvItem = affiliationSection?.items?.find(isUpgg);
+  if (upggCvItem) addBullet(upggCvItem);
+}
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -891,6 +929,7 @@ function migrateState(inputState) {
   }));
   next.cvProfile = normalizeCvProfile(next.cvProfile);
   next.cvSections = normalizeCvSections(next.cvSections || buildDefaultCvSections());
+  ensureUpggArimaongaEntry(next);
   next.cvResumeItemIds = uniqueValues(next.cvResumeItemIds || []);
   const knownSessionIds = new Set(next.sessions.map((session) => session.id));
   importedRows.forEach((session) => {
