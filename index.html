@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Career Records</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="style.css?v=36">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -469,13 +469,12 @@
           <label><span>End Date</span><input id="recordEndDate" type="month"></label>
           <label><span>CV Section</span><select id="recordCategory">
             <option value=""></option>
-            <option>Summary</option>
             <option>Education</option>
-            <option>Licenses and Certifications</option>
-            <option>Works</option>
+            <option>Credentials and Eligibility</option>
+            <option>Projects and Selected Works</option>
             <option>Work Experience</option>
             <option>Professional Development</option>
-            <option>Skills</option>
+            <option>Technical Skills</option>
             <option>Affiliations and Leadership</option>
             <option>Records Only</option>
           </select></label>
@@ -506,13 +505,9 @@
       <section class="document-page resume-page">
         <div class="document-head">
           <div>
-            <p class="eyebrow">Resume</p>
             <h2 id="resumeDocumentName">Lloyd Ramirez</h2>
-            <p id="resumeDocumentHeadline">Educator and tutor</p>
-            <p class="document-place" id="resumeDocumentPlace"></p>
             <p class="document-contact" id="resumeDocumentContact"></p>
           </div>
-          <img class="profile-photo" data-profile-photo alt="2x2 profile photo">
         </div>
         <div id="resumeContent"></div>
       </section>
@@ -546,13 +541,12 @@
             <input type="hidden" id="cvDetailEditingId">
             <label><span>Section</span><select id="cvDetailSection">
               <option value=""></option>
-              <option value="summary">Summary</option>
               <option value="education">Education</option>
-              <option value="licenses-and-certifications">Licenses and Certifications</option>
-              <option value="works">Works</option>
+              <option value="licenses-and-certifications">Credentials and Eligibility</option>
+              <option value="works">Projects and Selected Works</option>
               <option value="work-experience">Work Experience</option>
               <option value="professional-development">Professional Development</option>
-              <option value="skills">Skills</option>
+              <option value="skills">Technical Skills</option>
               <option value="affiliations-and-leadership">Affiliations and Leadership</option>
             </select></label>
             <label><span>Title</span><input id="cvDetailTitle" type="text"></label>
@@ -567,13 +561,9 @@
       <section class="document-page cv-page">
         <div class="document-head">
           <div>
-            <p class="eyebrow">Curriculum Vitae</p>
             <h2 id="cvDocumentName">Lloyd Ramirez</h2>
-            <p id="cvDocumentHeadline">Academic and professional credentials</p>
-            <p class="document-place" id="cvDocumentPlace"></p>
             <p class="document-contact" id="cvDocumentContact"></p>
           </div>
-          <img class="profile-photo" data-profile-photo alt="2x2 profile photo">
         </div>
         <div id="cvContent"></div>
       </section>
@@ -586,7 +576,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=91"></script>
+  <script src="script.js?v=95"></script>
 </body>
 </html>
 

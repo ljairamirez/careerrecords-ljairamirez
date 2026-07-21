@@ -6,7 +6,18 @@ const CLOUD_REFRESH_MS = 15000;
 const DEFAULT_SESSION_START_TIME = "12:00";
 const CURRENT_RATE_TUTOR = "Graduate Tutor";
 const UPGG_TITLE = "University of the Philippines Gaming Guild (UPGG)";
-const UPGG_ARIMAONGA_BULLET = "Oblation Esports Arimaonga Player (2AY 2025-2026)";
+const UPGG_ARIMAONGA_BULLET = "**Oblation Esports Arimaonga Player** (2AY 2025-2026)";
+const DOCUMENT_EMAIL = "ramirez.johnlloydc@gmail.com";
+const DOCUMENT_LINKEDIN_URL = "https://linkedin.com/in/jlcramirez";
+const CV_SECTION_ORDER = [
+  "education",
+  "work-experience",
+  "works",
+  "professional-development",
+  "licenses-and-certifications",
+  "skills",
+  "affiliations-and-leadership"
+];
 const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
@@ -59,23 +70,23 @@ const sourceCvSections = [
     title: "Education",
     entries: [
       {
-        title: "Bachelor of Science in Geodetic Engineering",
-        date: "August 2021 - 2026",
-        meta: "University of the Philippines Diliman, Quezon City, Metro Manila, Philippines",
+        title: "University of the Philippines Diliman",
+        date: "2021 - 2026",
+        meta: "",
         bullets: [
-          "DOST-SEI Scholar (2021-2026)",
-          "Undergraduate Research: Impact of Lighting Parameters on 3D Reconstruction of an Archaeological Artifact Replica Using Close Range Photogrammetry (unpublished), in partial fulfillment of GsE 188: Modern Photogrammetry.",
-          "Undergraduate Research: From Fields to Cities: Comparison of Support Vector Machine and Random Forest Classifiers for a Multi-Temporal Analysis of Urban Growth in Cavite (unpublished), in partial fulfillment of GsE 189: Remote Sensing: Theory and Applications."
+          "**Bachelor of Science in Geodetic Engineering**",
+          "**DOST RA 7687 S&T Undergraduate Scholarship Grantee** (2021-2025)",
+          "**UP Student Learning Assistance System (SLAS) Scholarship Awardee** (2023-2024)"
         ]
       },
       {
-        title: "High School",
-        date: "July 2015 - May 2021",
-        meta: "Philippine Science High School - Ilocos Region Campus, San Ildefonso, Ilocos Sur, Philippines",
+        title: "Philippine Science High School - Ilocos Region Campus",
+        date: "2015 - 2021",
+        meta: "",
         bullets: [
-          "With High Honors (2021)",
-          "Proficiency Award in Arts, Design, and Technology (2021)",
-          "STEM Track - Physics Strand, Electronics and Agriculture Elective"
+          "**With High Honors** (2021)",
+          "**Proficiency Award in Arts, Design, and Technology** (2021)",
+          "**STEM Track** - Physics Strand, Electronics Elective, Agriculture Elective"
         ]
       }
     ]
@@ -84,67 +95,53 @@ const sourceCvSections = [
     title: "Work Experience",
     entries: [
       {
-        title: "Geodetic Engineering Student Intern",
-        date: "July 2024 - August 2024",
-        meta: "RASA Surveying and Realty, Quezon City, Metro Manila, Philippines",
+        title: "Pr1me Tutorial Services / Self-employed",
+        date: "Sep 2025 - Present",
+        meta: "**Tutor / Teacher / Academic Coach**, Quezon City, NCR, Philippines",
         bullets: [
-          "Assisted in conducting land, hydrographic, and aerial surveying.",
-          "Handled GIS and remote sensing software for data processing.",
-          "Attended seminars and training camps for LiDAR and bathymetric surveying.",
-          "Prepared survey returns documents following government standards."
+          "Delivered one-on-one and group academic support to **200+ students** across **elementary, high school, and college** levels.",
+          "Taught **Mathematics, Statistics, and Physics**, including regular tutorials, review sessions, and targeted remediation.",
+          "Helped students prepare for and pass **removal examinations**, advance to the **next grade level**, and strengthen core subject mastery.",
+          "Supported high-performing students in sustaining academic standing, with some reaching the **Dean's List**.",
+          "Designed **review programs, preparatory exams, diagnostics, and assessments** for academic support and entrance-test preparation."
         ]
       },
       {
-        title: "Student Intern - Agriculture 1: Work Immersion",
-        date: "March 2020",
-        meta: "Malakas Farm Livelihood Development Enterprises, San Juan, Ilocos Sur",
+        title: "Moonton Student Leaders PH",
+        date: "March 2024 - Present",
+        meta: "**Campus Moonton Student Leader - UP Diliman**",
         bullets: [
-          "Participated in agricultural operations, particularly land preparation and mushroom propagation."
+          "Coordinated campus-level initiatives with **nationwide student leaders** to support community engagement and esports programming.",
+          "Planned and executed **online and face-to-face tournaments**, handling coordination, participant flow, and event operations."
         ]
       },
       {
-        title: "Student Intern - Microbiology, Chemistry, Metrology Labs",
-        date: "September 2018",
-        meta: "DOST Regional Science and Technology Laboratory 1, DMMMSU San Fernando, La Union",
-        bullets: [
-          "Shadowed laboratory staff and gained early exposure to scientific instrumentation."
-        ]
-      },
-      {
-        title: "Community Manager / Esports Varsity Player - MLBB",
+        title: "UP Esports Varsity Team",
         date: "March 2024 - May 2025",
-        meta: "UP Esports Varsity Team",
+        meta: "**Community Manager / Esports Varsity Player - MLBB**",
         bullets: [
-          "Managed internal communication and coordinated with players, moderators, and stakeholders for events and tournaments.",
-          "Handled and managed Diliman Games tournaments as a co-organizer."
+          "Managed team communication among players, moderators, and stakeholders for esports events and tournament operations.",
+          "Co-organized **Diliman Games MLBB tournaments**, supporting planning, match coordination, and event execution."
         ]
       },
       {
-        title: "Campus Moonton Student Leader - UP Diliman",
-        date: "March 2024 - Present",
-        meta: "Moonton Student Leaders PH",
+        title: "RASA Surveying and Realty",
+        date: "July 2024 - August 2024",
+        meta: "**Land Surveyor, GIS Specialist, and Aerial Surveyor (Drone Pilot) Intern**, Quezon City, NCR, Philippines",
         bullets: [
-          "Led initiatives and collaborated with nationwide student leaders on community projects.",
-          "Planned and managed online and face-to-face tournaments at various scales."
+          "Supported field operations for **land, hydrographic, and aerial surveying** projects.",
+          "Processed and organized spatial data using **GIS and remote sensing software**.",
+          "Completed technical exposure in **LiDAR and bathymetric surveying** through seminars and training camps.",
+          "Prepared **survey returns documents** aligned with government documentation standards."
         ]
       },
       {
-        title: "Part-Time Tutor / Lecturer",
-        date: "March 2024 - Present",
-        meta: "Self-employed",
+        title: "Early Internship Exposure",
+        date: "2018 - 2020",
+        meta: "",
         bullets: [
-          "Performed tutoring sessions for elementary and high school students, particularly in Mathematics and related subjects.",
-          "Served as lecturer for review sessions for college entrance tests (CETs)."
-        ]
-      },
-      {
-        title: "Freelance Programmer / Web Developer",
-        date: "2024 - Present",
-        meta: "Self-employed / Commission-based",
-        bullets: [
-          "Created websites and web-based tools for freelance and commission-based projects.",
-          "Provided programming support for thesis-related work, academic tasks, and other technical commissions.",
-          "Handled basic web deployment workflows and project setup for browser-based applications."
+          "**Malakas Farm Livelihood Development Enterprises** - Student Intern, Agriculture 1: Work Immersion (March 2020).",
+          "**DOST Regional Science and Technology Laboratory 1** - Student Intern, Microbiology, Chemistry, and Metrology Labs (September 2018)."
         ]
       }
     ]
@@ -153,51 +150,39 @@ const sourceCvSections = [
     title: "Skills",
     entries: [
       {
-        title: "Surveying",
+        title: "GIS and Mapping",
         bullets: [
-          "Hands-on experience in land surveying workflows, field measurements, and preparation of survey-related outputs.",
-          "Experienced with aerial or drone-assisted surveying exposure for spatial data capture and project documentation."
+          "**ArcGIS, QGIS, Civil 3D, and Autodesk workflows** for geospatial data handling, map creation, spatial analysis, and CAD-based mapping."
         ]
       },
       {
-        title: "Mapping and GIS",
+        title: "Surveying",
         bullets: [
-          "Experienced in geospatial data handling, map creation, and spatial analysis using GIS platforms such as ArcGIS and QGIS.",
-          "Background in remote sensing, photogrammetry, and CAD-based mapping workflows using tools such as Civil 3D and Autodesk platforms."
+          "**Land surveying, field measurements, hydrographic surveying exposure, and survey returns preparation**."
+        ]
+      },
+      {
+        title: "Remote Sensing and Photogrammetry",
+        bullets: [
+          "**Remote sensing, LiDAR, close-range photogrammetry, and Google Earth Engine** for academic and research workflows."
+        ]
+      },
+      {
+        title: "Programming and Web Development",
+        bullets: [
+          "**HTML, CSS, JavaScript, Python, Java, and R** for web projects, geospatial scripting, data automation, and academic tools."
         ]
       },
       {
         title: "Drone Operations",
         bullets: [
-          "Has practical experience flying drones for aerial observation and survey-related documentation, currently uncertified.",
-          "Familiar with basic flight handling, visual inspection support, and image capture for mapping or project reference."
+          "**Practical exposure to drone-assisted aerial surveying and flight handling** for spatial data capture and project documentation; **not yet certified**."
         ]
       },
       {
-        title: "Data Handling",
+        title: "Data Processing and Documentation",
         bullets: [
-          "Proficient in Microsoft Office Suite, including Word, Excel, and PowerPoint for document preparation and data processing."
-        ]
-      },
-      {
-        title: "Event Handling and Management",
-        bullets: [
-          "Skilled in end-to-end event coordination, including planning, logistics, and execution.",
-          "Highly organized and efficient in managing time and tasks."
-        ]
-      },
-      {
-        title: "Flexible and Resilient",
-        bullets: [
-          "Demonstrates adaptability and a strong willingness to learn when given opportunities.",
-          "Can effectively perform onsite, online, or in a hybrid setup."
-        ]
-      },
-      {
-        title: "Programming and Web Deployment",
-        bullets: [
-          "Major programming languages and tools include HTML, Python, Java, JavaScript, Google Earth Engine, and R.",
-          "Background in web deployment, geospatial scripting, data automation, and other software platforms for academic, research, and web-based projects."
+          "**Microsoft Word, Excel, and PowerPoint** for technical documentation, data organization, reports, and presentation materials."
         ]
       }
     ]
@@ -208,23 +193,31 @@ const sourceCvSections = [
       {
         title: "University of the Philippines Namnama (UP Namnama)",
         bullets: [
-          "Vice President for Internal Affairs (AY 2025-2026)",
-          "Sirib ken Saririt 2025: 43rd Sirib Quiz Show and 16th Saririt Cultural Festival, Provincials Leg - Ilocos Norte Co-Head (January 2025)",
-          "SURO 2025: Facilitator and Lecturer (Mathematics) - Ilocos Norte (July 2025)"
+          "**Vice President for Internal Affairs** (AY 2025-2026)",
+          "**Sirib ken Saririt 2025** - Ilocos Norte Co-Head, Provincials Leg (January 2025)",
+          "**SURO 2025** - Facilitator and Mathematics Lecturer, Ilocos Norte (July 2025)"
         ]
       },
       {
         title: "Moonton Student Leaders Philippines",
         bullets: [
-          "Campus Student Leader (March 2024 - Present)"
+          "**Campus Student Leader** (March 2024 - Present)"
         ]
       },
       {
         title: "University of the Philippines Esports Varsity Team",
         bullets: [
-          "Community Manager (March 2024 - May 2025)",
-          "Diliman Games 2024 Co-Organizer (May 2024)",
-          "Diliman Games 2025 Co-Organizer (May 2025)"
+          "**Community Manager** (March 2024 - May 2025)",
+          "**Diliman Games MLBB Co-Organizer** (May 2024; May 2025)"
+        ]
+      },
+      {
+        title: "University of the Philippines Gaming Guild (UPGG)",
+        bullets: [
+          "**Honorary Member** (1AY-2AY 2023-2024; 2AY 2025-2026)",
+          "**Oblation Esports Minokawa Player** (1AY-2AY 2023-2024)",
+          "**Oblation Esports Arimaonga Player** (2AY 2025-2026)",
+          "**Diliman Games 2026 MLBB Co-Organizer** (May 2026)"
         ]
       }
     ]
@@ -235,8 +228,8 @@ function buildDefaultCvProfile() {
   return {
     name: "John Lloyd C. Ramirez",
     headline: "Academic and professional credentials",
-    place: "Quezon City, Philippines 1101",
-    contact: "(+63) 916 7023 686 | jcramirez8@up.edu.ph | ljairamirez@gmail.com | linkedin.com/in/jlcramirez"
+    place: "",
+    contact: `${DOCUMENT_EMAIL} | (+63) 916 7023 686 | LinkedIn`
   };
 }
 
@@ -257,33 +250,43 @@ function buildDefaultCvSections() {
       items: [
         {
           id: "education-upd",
-          title: "Bachelor of Science in Geodetic Engineering",
-          date: "August 2021 - 2026",
-          meta: "University of the Philippines Diliman, Quezon City, Metro Manila, Philippines",
-          bullets: ["DOST-SEI Scholar (2021-2026)"]
+          title: "University of the Philippines Diliman",
+          date: "2021 - 2026",
+          meta: "",
+          bullets: [
+            "**Bachelor of Science in Geodetic Engineering**",
+            "**DOST RA 7687 S&T Undergraduate Scholarship Grantee** (2021-2025)",
+            "**UP Student Learning Assistance System (SLAS) Scholarship Awardee** (2023-2024)"
+          ]
         },
         {
           id: "education-pshs",
-          title: "High School",
-          date: "July 2015 - May 2021",
-          meta: "Philippine Science High School - Ilocos Region Campus, San Ildefonso, Ilocos Sur, Philippines",
+          title: "Philippine Science High School - Ilocos Region Campus",
+          date: "2015 - 2021",
+          meta: "",
           bullets: [
-            "With High Honors (2021)",
-            "Proficiency Award in Arts, Design, and Technology (2021)",
-            "STEM Track - Physics Strand, Electronics and Agriculture Elective"
+            "**With High Honors** (2021)",
+            "**Proficiency Award in Arts, Design, and Technology** (2021)",
+            "**STEM Track** - Physics Strand, Electronics Elective, Agriculture Elective"
           ]
         }
       ]
     },
     {
       id: "licenses-and-certifications",
-      title: "Licenses and Certifications",
+      title: "Credentials and Eligibility",
       items: []
     },
     {
       id: "works",
-      title: "Works",
+      title: "Projects and Selected Works",
       items: [
+        {
+          id: "works-undergraduate-thesis",
+          title: "Assessment of Aboveground Carbon Change of Aquaculture-Mangrove Converted Ecosystems in Aklan Using Global Ecosystems Dynamics Investigation (GEDI) LiDAR",
+          meta: "**Unpublished Undergraduate Thesis**",
+          bullets: ["C.E.A. Biagtan, J.L.C. Ramirez, A.M.T. Tamondong, A.B. Baloloy, R. Suwa"]
+        },
         {
           id: "works-photogrammetry",
           title: "Impact of Lighting Parameters on 3D Reconstruction of an Archaeological Artifact Replica Using Close Range Photogrammetry",
@@ -300,10 +303,10 @@ function buildDefaultCvSections() {
           id: "works-pr1me-tutorial-services",
           title: "PR1ME Tutorial Services",
           meta: "pr1metutorialservices.com",
-          description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
+          description: "**Responsive web project** - pr1metutorialservices.com",
           bullets: [
-            "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
-            "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
+            "Developed a responsive website presenting **services, tutors, packages, and client inquiry flows**.",
+            "Implemented front-end structure and deployment workflow for publication on **Vercel**.",
             "Link: pr1metutorialservices.com"
           ]
         }
@@ -325,15 +328,15 @@ function buildDefaultCvSections() {
           meta: "BFAR-PFO New Washington and Boracay Island, Aklan, Philippines",
           description: "Participant",
           bullets: [
-            "Attended seminars and workshops on sustainable environmental protection.",
-            "Observed automated aerial surveying workflows and drone flight demonstrations."
+            "Participated in seminars and workshops on **sustainable environmental management, monitoring, and protection**.",
+            "Demonstrated **drone flight and automated aerial surveying workflows** during field activities."
           ]
         }
       ]
     },
     {
       id: "skills",
-      title: "Skills",
+      title: "Technical Skills",
       items: sourceCvSections.find((section) => section.title === "Skills").entries.map((entry, index) => ({ id: `skill-${index + 1}`, ...entry }))
     },
     {
@@ -362,10 +365,20 @@ function normalizeCvSections(sections) {
   });
   const byId = Object.fromEntries(normalized.map((section) => [section.id, section]));
   const defaultIds = new Set(defaults.map((section) => section.id));
-  return dedupeCvSectionItems(ensureCvCareerAdditions([
+  return orderCvSections(dedupeCvSectionItems(ensureCvCareerAdditions([
     ...defaults.map((section) => byId[section.id] || section),
     ...normalized.filter((section) => !defaultIds.has(section.id))
-  ]));
+  ])));
+}
+
+function orderCvSections(sections) {
+  return [...(sections || [])].sort((a, b) => {
+    const aIndex = CV_SECTION_ORDER.indexOf(a.id);
+    const bIndex = CV_SECTION_ORDER.indexOf(b.id);
+    const normalizedA = aIndex < 0 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const normalizedB = bIndex < 0 ? Number.MAX_SAFE_INTEGER : bIndex;
+    return normalizedA - normalizedB;
+  });
 }
 
 function dedupeCvSectionItems(sections) {
@@ -385,69 +398,110 @@ function dedupeCvSectionItems(sections) {
     };
   });
 }
+
+function replaceKnownCvItems(section, desiredItems, sectionTitle, knownPatterns = []) {
+  const desired = (desiredItems || []).map((item, index) => normalizeCvItem(item, sectionTitle, index));
+  const desiredTitles = new Set(desired.map((item) => String(item.title || "").trim().toLowerCase()));
+  const extras = (section.items || []).filter((item) => {
+    const title = String(item.title || "").trim();
+    if (!title) return false;
+    if (desiredTitles.has(title.toLowerCase())) return false;
+    return !knownPatterns.some((pattern) => pattern.test(title));
+  });
+  section.items = [...desired, ...extras];
+}
+
 function ensureCvCareerAdditions(sections) {
   const additions = [
     {
       sectionId: "skills",
-      sectionTitle: "Skills",
+      sectionTitle: "Technical Skills",
+      item: {
+        id: "skill-gis-mapping",
+        title: "GIS and Mapping",
+        bullets: [
+          "ArcGIS, QGIS, Civil 3D, and Autodesk workflows for geospatial data handling, map creation, spatial analysis, and CAD-based mapping."
+        ]
+      }
+    },
+    {
+      sectionId: "skills",
+      sectionTitle: "Technical Skills",
       item: {
         id: "skill-surveying",
         title: "Surveying",
         bullets: [
-          "Hands-on experience in land surveying workflows, field measurements, and preparation of survey-related outputs.",
-          "Experienced with aerial or drone-assisted surveying exposure for spatial data capture and project documentation."
+          "Land surveying, field measurements, hydrographic surveying exposure, and survey returns preparation."
         ]
       }
     },
     {
       sectionId: "skills",
-      sectionTitle: "Skills",
+      sectionTitle: "Technical Skills",
       item: {
-        id: "skill-mapping-gis",
-        title: "Mapping and GIS",
+        id: "skill-remote-sensing-photogrammetry",
+        title: "Remote Sensing and Photogrammetry",
         bullets: [
-          "Experienced in geospatial data handling, map creation, and spatial analysis using GIS platforms such as ArcGIS and QGIS.",
-          "Background in remote sensing, photogrammetry, and CAD-based mapping workflows using tools such as Civil 3D and Autodesk platforms."
+          "Remote sensing, LiDAR, close-range photogrammetry, and Google Earth Engine for academic and research workflows."
         ]
       }
     },
     {
       sectionId: "skills",
-      sectionTitle: "Skills",
+      sectionTitle: "Technical Skills",
+      item: {
+        id: "skill-programming-web-development",
+        title: "Programming and Web Development",
+        bullets: [
+          "HTML, CSS, JavaScript, Python, Java, and R for web projects, geospatial scripting, data automation, and academic tools."
+        ]
+      }
+    },
+    {
+      sectionId: "skills",
+      sectionTitle: "Technical Skills",
       item: {
         id: "skill-drone-operations",
         title: "Drone Operations",
         bullets: [
-          "Has practical experience flying drones for aerial observation and survey-related documentation, currently uncertified.",
-          "Familiar with basic flight handling, visual inspection support, and image capture for mapping or project reference."
+          "Practical exposure to drone-assisted aerial surveying and flight handling for spatial data capture and project documentation; not yet certified."
         ]
       }
     },
     {
       sectionId: "skills",
-      sectionTitle: "Skills",
+      sectionTitle: "Technical Skills",
       item: {
-        id: "skill-programming-web-deployment",
-        title: "Programming and Web Deployment",
+        id: "skill-data-processing-documentation",
+        title: "Data Processing and Documentation",
         bullets: [
-          "Major programming languages and tools include HTML, Python, Java, JavaScript, Google Earth Engine, and R.",
-          "Background in web deployment, geospatial scripting, data automation, and other software platforms for academic, research, and web-based projects."
+          "Microsoft Word, Excel, and PowerPoint for technical documentation, data organization, reports, and presentation materials."
         ]
       }
     },
     {
-      sectionId: "work-experience",
-      sectionTitle: "Work Experience",
+      sectionId: "works",
+      sectionTitle: "Projects and Selected Works",
       item: {
-        id: "work-freelance-programming",
-        title: "Freelance Programmer / Web Developer",
+        id: "works-freelance-programming",
+        title: "Self-employed / Commission-based",
         date: "2024 - Present",
-        meta: "Self-employed / Commission-based",
+        meta: "Freelance Programmer / Web Developer",
         bullets: [
-          "Created websites and web-based tools for freelance and commission-based projects.",
-          "Provided programming support for thesis-related work, academic tasks, and other technical commissions.",
-          "Handled basic web deployment workflows and project setup for browser-based applications."
+          "Built responsive websites and browser-based tools for academic, service-based, and commission-based projects.",
+          "Provided programming support for thesis work, academic tasks, geospatial workflows, and technical commissions.",
+          "Handled front-end project setup, interface implementation, and deployment preparation."
         ]
+      }
+    },
+    {
+      sectionId: "works",
+      sectionTitle: "Projects and Selected Works",
+      item: {
+        id: "works-undergraduate-thesis",
+        title: "Assessment of Aboveground Carbon Change of Aquaculture-Mangrove Converted Ecosystems in Aklan Using Global Ecosystems Dynamics Investigation (GEDI) LiDAR",
+        meta: "**Unpublished Undergraduate Thesis**",
+        bullets: ["C.E.A. Biagtan, J.L.C. Ramirez, A.M.T. Tamondong, A.B. Baloloy, R. Suwa"]
       }
     },
     {
@@ -460,8 +514,8 @@ function ensureCvCareerAdditions(sections) {
         meta: "BFAR-PFO New Washington and Boracay Island, Aklan, Philippines",
         description: "Participant",
         bullets: [
-          "Attended seminars and workshops on sustainable environmental protection.",
-          "Observed automated aerial surveying workflows and drone flight demonstrations."
+          "Participated in seminars and workshops on **sustainable environmental management, monitoring, and protection**.",
+          "Demonstrated **drone flight and automated aerial surveying workflows** during field activities."
         ]
       }
     },
@@ -472,10 +526,10 @@ function ensureCvCareerAdditions(sections) {
         id: "works-pr1me-tutorial-services",
         title: "PR1ME Tutorial Services",
         meta: "pr1metutorialservices.com",
-        description: "Website project for PR1ME Tutorial Services, built as a responsive web presence for tutorial service information and client inquiries.",
+        description: "**Responsive web project** - pr1metutorialservices.com",
         bullets: [
-          "Developed and deployed the website using HTML, CSS, and JavaScript with responsive layout behavior.",
-          "Structured sections for services, tutor information, packages, contact flow, and deployment on Vercel.",
+          "Developed a responsive website presenting **services, tutors, packages, and client inquiry flows**.",
+          "Implemented front-end structure and deployment workflow for publication on **Vercel**.",
           "Link: pr1metutorialservices.com"
         ]
       }
@@ -483,16 +537,62 @@ function ensureCvCareerAdditions(sections) {
   ];
   const skillsSection = sections.find((item) => item.id === "skills");
   if (skillsSection) {
-    skillsSection.items = (skillsSection.items || []).filter((item) => String(item.title || "").trim().toLowerCase() !== "surveying and mapping");
+    skillsSection.title = "Technical Skills";
+    const staleSkillTitles = new Set(["surveying and mapping", "mapping and gis", "programming and web deployment", "data handling"]);
+    skillsSection.items = (skillsSection.items || []).filter((item) => !staleSkillTitles.has(String(item.title || "").trim().toLowerCase()));
+  }
+  const worksSection = sections.find((item) => item.id === "works");
+  if (worksSection) worksSection.title = "Projects and Selected Works";
+  const credentialsSection = sections.find((item) => item.id === "licenses-and-certifications");
+  if (credentialsSection) credentialsSection.title = "Credentials and Eligibility";
+  const workExperienceSection = sections.find((item) => item.id === "work-experience");
+  if (workExperienceSection) {
+    workExperienceSection.items = (workExperienceSection.items || []).filter((item) => String(item.title || "").trim().toLowerCase() !== "freelance programmer / web developer");
+    replaceKnownCvItems(
+      workExperienceSection,
+      sourceCvSections.find((section) => section.title === "Work Experience").entries,
+      "Work Experience",
+      [
+        /geodetic engineering student intern/i,
+        /student intern/i,
+        /community manager/i,
+        /campus moonton/i,
+        /part-time tutor/i,
+        /pr1me tutorial services/i,
+        /moonton student leaders/i,
+        /up esports varsity team/i,
+        /rasa surveying/i,
+        /early internship exposure/i
+      ]
+    );
+  }
+  if (skillsSection) {
+    replaceKnownCvItems(
+      skillsSection,
+      sourceCvSections.find((section) => section.title === "Skills").entries,
+      "Technical Skills",
+      [/surveying/i, /mapping/i, /gis/i, /remote sensing/i, /photogrammetry/i, /programming/i, /web/i, /drone/i, /data/i, /event handling/i, /flexible/i]
+    );
+  }
+  const affiliationSection = sections.find((item) => item.id === "affiliations-and-leadership");
+  if (affiliationSection) {
+    replaceKnownCvItems(
+      affiliationSection,
+      sourceCvSections.find((section) => section.title === "Affiliations & Leadership").entries,
+      "Affiliations and Leadership",
+      [/up namnama/i, /moonton student leaders/i, /up esports varsity team/i, /university of the philippines esports varsity team/i, /\bUPGG\b/i, /gaming guild/i]
+    );
   }
   additions.forEach((addition) => {
     const section = sections.find((item) => item.id === addition.sectionId);
     if (!section) return;
     const existing = (section.items || []).find((item) => String(item.title || "").trim().toLowerCase() === addition.item.title.toLowerCase());
-    if (existing && addition.item.id === "works-pr1me-tutorial-services") {
+    if (existing && (addition.item.id === "works-pr1me-tutorial-services" || addition.item.id === "professional-development-future-earth-cns" || addition.item.id === "works-undergraduate-thesis")) {
       existing.meta = addition.item.meta;
       existing.description = addition.item.description;
       existing.bullets = [...addition.item.bullets];
+    } else if (existing && addition.sectionId === "skills") {
+      existing.bullets = [...(addition.item.bullets || [])];
     } else if (!existing) {
       section.items.push(normalizeCvItem(addition.item, addition.sectionTitle, section.items?.length || 0));
     }
@@ -504,12 +604,27 @@ function ensureCvCareerAdditions(sections) {
     summaryItem.description = graduateSummary;
   }
   const educationSection = sections.find((item) => item.id === "education");
-  const geodeticDegree = educationSection?.items?.find((item) => /bachelor of science in geodetic engineering/i.test(item.title || ""));
+  const geodeticDegree = educationSection?.items?.find((item) => /bachelor of science in geodetic engineering|University of the Philippines Diliman/i.test([item.title, item.meta].filter(Boolean).join(" ")));
   if (geodeticDegree) {
-    if (/present/i.test(geodeticDegree.date || "")) geodeticDegree.date = "August 2021 - 2026";
-    geodeticDegree.bullets = (geodeticDegree.bullets || []).map((bullet) =>
-      /DOST-SEI Scholar \(2021-Present\)/i.test(bullet) ? "DOST-SEI Scholar (2021-2026)" : bullet
-    );
+    geodeticDegree.title = "University of the Philippines Diliman";
+    geodeticDegree.date = "2021 - 2026";
+    geodeticDegree.meta = "";
+    geodeticDegree.bullets = [
+      "**Bachelor of Science in Geodetic Engineering**",
+      "**DOST RA 7687 S&T Undergraduate Scholarship Grantee** (2021-2025)",
+      "**UP Student Learning Assistance System (SLAS) Scholarship Awardee** (2023-2024)"
+    ];
+  }
+  const highSchool = educationSection?.items?.find((item) => /high school|Philippine Science High School/i.test([item.title, item.meta].filter(Boolean).join(" ")));
+  if (highSchool) {
+    highSchool.title = "Philippine Science High School - Ilocos Region Campus";
+    highSchool.date = "2015 - 2021";
+    highSchool.meta = "";
+    highSchool.bullets = [
+      "**With High Honors** (2021)",
+      "**Proficiency Award in Arts, Design, and Technology** (2021)",
+      "**STEM Track** - Physics Strand, Electronics Elective, Agriculture Elective"
+    ];
   }
   return sections;
 }
@@ -524,6 +639,8 @@ function normalizeCvProfile(profile = {}) {
       next.contact = parts.join(" | ");
     }
   }
+  next.place = "";
+  next.contact = `${DOCUMENT_EMAIL} | (+63) 916 7023 686 | LinkedIn`;
   return next;
 }
 
@@ -540,11 +657,12 @@ function normalizeCvItem(item, sectionTitle, index = 0) {
 
 function normalizeCvSectionTitle(title) {
   const value = String(title || "").trim();
-  if (/^skill$/i.test(value)) return "Skills";
-  if (/^(license|licenses|certification|certifications|licenses?\s*(and|&)\s*certifications?)$/i.test(value)) return "Licenses and Certifications";
+  if (/^(skill|skills|technical skills)$/i.test(value)) return "Technical Skills";
+  if (/^(works?|projects?(\s+and\s+selected\s+works?)?|selected works?)$/i.test(value)) return "Projects and Selected Works";
+  if (/^(credential|credentials|eligibility|credentials?\s*(and|&)\s*eligibility|license|licenses|certification|certifications|licenses?\s*(and|&)\s*certifications?)$/i.test(value)) return "Credentials and Eligibility";
   if (/^records?\s*only$/i.test(value)) return "Records Only";
   if (/^affiliations\s*&\s*leadership$/i.test(value)) return "Affiliations and Leadership";
-  return value || "Works";
+  return value || "Projects and Selected Works";
 }
 
 function sectionIdFromTitle(title) {
@@ -554,6 +672,9 @@ function sectionIdFromTitle(title) {
 function normalizeCvSectionId(id) {
   const value = String(id || "").trim();
   if (value === "affiliations-leadership") return "affiliations-and-leadership";
+  if (value === "technical-skills") return "skills";
+  if (value === "projects-and-selected-works" || value === "selected-works") return "works";
+  if (value === "credentials-and-eligibility" || value === "credentials" || value === "eligibility") return "licenses-and-certifications";
   return value;
 }
 
@@ -561,6 +682,11 @@ function ensureUpggArimaongaEntry(targetState) {
   const hasBullet = (items = []) => items.some((item) => String(item || "").trim().toLowerCase() === UPGG_ARIMAONGA_BULLET.toLowerCase());
   const addBullet = (item) => {
     item.bullets = Array.isArray(item.bullets) ? item.bullets : parseBulletLines(item.bullets || "");
+    item.bullets = item.bullets.map((bullet) =>
+      String(bullet || "").replace(/\*\*/g, "").trim().toLowerCase() === UPGG_ARIMAONGA_BULLET.replace(/\*\*/g, "").toLowerCase()
+        ? UPGG_ARIMAONGA_BULLET
+        : bullet
+    );
     if (!hasBullet(item.bullets)) item.bullets.push(UPGG_ARIMAONGA_BULLET);
   };
   const isUpgg = (item) => /\bUPGG\b|University of the Philippines Gaming Guild/i.test(item?.title || "");
@@ -1986,10 +2112,23 @@ function renderCareerDocuments() {
 
 function updateDocumentProfile() {
   const profile = normalizeCvProfile(state.cvProfile || {});
-  [["#resumeDocumentName", profile.name], ["#cvDocumentName", profile.name], ["#resumeDocumentHeadline", profile.headline], ["#cvDocumentHeadline", profile.headline], ["#resumeDocumentPlace", profile.place], ["#cvDocumentPlace", profile.place], ["#resumeDocumentContact", profile.contact], ["#cvDocumentContact", profile.contact]].forEach(([selector, value]) => {
+  [["#resumeDocumentName", profile.name], ["#cvDocumentName", profile.name]].forEach(([selector, value]) => {
     const element = $(selector);
     if (element) element.textContent = value || "";
   });
+  const contactHtml = documentContactHtml();
+  ["#resumeDocumentContact", "#cvDocumentContact"].forEach((selector) => {
+    const element = $(selector);
+    if (element) element.innerHTML = contactHtml;
+  });
+}
+
+function documentContactHtml() {
+  return [
+    `<span class="contact-item"><a href="mailto:${escapeAttr(DOCUMENT_EMAIL)}">${escapeHtml(DOCUMENT_EMAIL)}</a></span>`,
+    `<span class="contact-item">(+63) 916 7023 686</span>`,
+    `<span class="contact-item"><a href="${escapeAttr(DOCUMENT_LINKEDIN_URL)}" target="_blank" rel="noopener noreferrer">LinkedIn</a></span>`
+  ].join("");
 }
 
 function renderResumeFromSelection(target) {
@@ -2063,7 +2202,7 @@ function cvSectionGroups() {
         .map(({ item }) => item);
     }
   });
-  return sections;
+  return sections.filter((section) => section.id !== "summary");
 }
 
 function worksItemPriority(item) {
@@ -2114,16 +2253,16 @@ function cvItemHtml(item, options = {}) {
     : "";
   const bulletHtml = item.bullets?.length
     ? options.sectionId === "works"
-      ? `<div class="document-inline-details">${item.bullets.map((bullet) => `<p>${linkifyText(bullet)}</p>`).join("")}</div>`
-      : `<ul>${item.bullets.map((bullet) => `<li>${linkifyText(bullet)}</li>`).join("")}</ul>`
+      ? `<div class="document-inline-details">${item.bullets.map((bullet) => `<p>${formatDocumentText(bullet)}</p>`).join("")}</div>`
+      : `<ul>${item.bullets.map((bullet) => `<li>${formatDocumentText(bullet)}</li>`).join("")}</ul>`
     : "";
   return `<article class="document-item cv-detail-item">
     <div class="document-item-main">
       ${selector}
       <div class="document-item-body">
         <div class="document-item-title"><strong>${escapeHtml(item.title)}</strong>${item.date ? `<span>${escapeHtml(item.date)}</span>` : ""}</div>
-        ${item.meta ? `<p class="document-item-meta">${linkifyText(item.meta)}</p>` : ""}
-        ${item.description ? `<p class="${item.descriptionItalic ? "document-item-description is-italic" : "document-item-description"}">${linkifyText(item.description)}</p>` : ""}
+        ${item.meta ? `<p class="document-item-meta">${formatDocumentText(item.meta)}</p>` : ""}
+        ${item.description ? `<p class="${item.descriptionItalic ? "document-item-description is-italic" : "document-item-description"}">${formatDocumentText(item.description)}</p>` : ""}
         ${bulletHtml}
       </div>
       ${options.resume ? removeButton : editButton}
@@ -3836,7 +3975,15 @@ function escapeAttr(value) {
 }
 
 function linkifyText(value) {
-  const escaped = escapeHtml(value);
+  return linkifyEscapedText(escapeHtml(value));
+}
+
+function formatDocumentText(value) {
+  const emphasized = escapeHtml(value).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  return linkifyEscapedText(emphasized);
+}
+
+function linkifyEscapedText(escaped) {
   return escaped.replace(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s<]*)?)/gi, (match) => {
     const trailing = match.match(/[.,;:!?)]$/)?.[0] || "";
     const cleanMatch = trailing ? match.slice(0, -1) : match;

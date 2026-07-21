@@ -1153,13 +1153,15 @@ tbody tr.individual-session td:first-child {
 }
 
 .document-page {
-  max-width: 880px;
+  max-width: 940px;
   margin: 0 auto;
-  padding: 34px;
-  border: 1px solid #d8e3ea;
-  border-radius: 8px;
+  padding: 0;
+  border: 1px solid #d6d0c4;
+  border-radius: 0;
   background: #ffffff;
-  box-shadow: var(--shadow);
+  color: #131313;
+  box-shadow: 0 24px 70px rgba(19, 19, 19, 0.1);
+  font-family: "Times New Roman", Times, serif;
 }
 
 .resume-toolbar {
@@ -1169,44 +1171,79 @@ tbody tr.individual-session td:first-child {
 }
 
 .document-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  padding-bottom: 18px;
-  border-bottom: 2px solid var(--teal);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: 28px clamp(24px, 6vw, 50px) 16px;
+  border-top: 6px solid #00747c;
+  border-bottom: 0;
+  text-align: center;
+}
+
+.document-head > div {
+  min-width: 0;
+  text-align: center;
 }
 
 .document-head h2 {
-  margin: 0 0 6px;
-  font-size: 28px;
+  margin: 0;
+  font-size: clamp(1.8rem, 3.4vw, 2.35rem);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .document-head p {
-  margin: 0;
-  color: var(--muted);
+  margin: 6px 0 0;
+  color: #5d6067;
 }
 
 .document-place,
 .document-contact {
   margin-top: 6px !important;
-  max-width: 620px;
-  color: #334155 !important;
-  font-size: 13px;
-  line-height: 1.45;
+  max-width: none;
+  color: #131313 !important;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .document-contact {
-  margin-top: 2px !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 0;
+  justify-content: center;
+  margin-top: 6px !important;
+}
+
+.contact-item {
+  white-space: nowrap;
+}
+
+.contact-item + .contact-item::before {
+  content: "|";
+  margin: 0 6px;
+  color: #131313;
+}
+
+.document-contact a {
+  color: inherit;
+  text-decoration-color: rgba(0, 116, 124, 0.45);
+  text-underline-offset: 0.18em;
+}
+
+.document-contact a:hover {
+  color: #005b66;
 }
 
 .profile-photo {
-  width: 132px;
+  width: 124px;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border: 1px solid #8fb8c8;
-  border-radius: 4px;
-  background: #eef5f7;
+  object-position: center top;
+  border: 1px solid #d6d0c4;
+  border-radius: 0;
+  background: #ffffff;
 }
 
 .photo-placeholder {
@@ -1218,33 +1255,38 @@ tbody tr.individual-session td:first-child {
 }
 
 .document-section {
-  margin-top: 20px;
+  margin-top: 0;
+  padding: 17px clamp(24px, 6vw, 50px);
 }
 
 .document-section h3 {
-  margin: 0 0 18px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid #111827;
-  color: #004b8d;
-  font-size: 16px;
+  margin: 0 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 3px solid #00747c;
+  color: #1f4e79;
+  font-size: 0.93rem;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .document-items {
   display: grid;
-  gap: 18px;
+  gap: 13px;
 }
 
 .document-item {
   display: grid;
-  gap: 5px;
+  gap: 2px;
+  font-size: 1rem;
+  line-height: 1.35;
 }
 
 .document-item-title {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 22px;
+  align-items: baseline;
 }
 
 .document-item-main {
@@ -1252,7 +1294,7 @@ tbody tr.individual-session td:first-child {
   align-items: flex-start;
   gap: 12px;
   border-radius: 6px;
-  padding: 4px 0;
+  padding: 0;
 }
 
 .document-item-body {
@@ -1262,20 +1304,23 @@ tbody tr.individual-session td:first-child {
 
 .document-item-title strong {
   display: block;
-  color: #0f172a;
+  color: #131313;
+  font-size: 1rem;
+  font-weight: 800;
   line-height: 1.35;
 }
 
 .document-item-title span {
-  color: #0f172a;
-  font-size: 14px;
+  color: #5d6067;
+  font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.35;
+  text-align: right;
   white-space: nowrap;
 }
 
 .document-item-meta {
-  color: #0f172a;
+  color: #5d6067;
   font-style: italic;
   font-weight: 500;
 }
@@ -1294,7 +1339,13 @@ tbody tr.individual-session td:first-child {
 
 .document-item p {
   margin: 0;
-  color: var(--muted);
+  color: #131313;
+}
+
+.document-item p strong,
+.document-item li strong {
+  color: #131313;
+  font-weight: 800;
 }
 
 .document-section[data-cv-section="summary"] .document-item p {
@@ -1307,8 +1358,8 @@ tbody tr.individual-session td:first-child {
 
 .document-item ul {
   margin: 4px 0 0;
-  padding-left: 18px;
-  color: var(--text);
+  padding-left: 20px;
+  color: #131313;
 }
 
 .document-item li {
@@ -1322,7 +1373,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .document-inline-details p {
-  color: var(--text);
+  color: #131313;
 }
 
 .cv-builder-grid {
@@ -1764,8 +1815,12 @@ tbody tr.individual-session td:first-child {
   }
 
   .document-item-title {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 2px;
+  }
+
+  .document-item-title span {
+    text-align: left;
   }
 
   .document-item-main {
@@ -1898,7 +1953,7 @@ tbody tr.individual-session td:first-child {
   }
 
   .document-section {
-    break-inside: avoid;
+    break-inside: auto;
   }
 
   th {
@@ -1955,30 +2010,64 @@ tbody tr.individual-session td:first-child {
 }
 
 @media print {
-  /* Curriculum Vitae only */
-  #cv .document-section {
-    margin-top: 12px;
+  /* Career document print layout */
+  #cv .document-head,
+  #resume .document-head {
+    padding: 6px 0 8px;
+    border-top: 6px solid #00747c;
+    text-align: center !important;
   }
 
-  #cv .document-section h3 {
+  #cv .document-head h2,
+  #resume .document-head h2 {
+    font-size: 16.5pt;
+    line-height: 1;
+  }
+
+  #cv .document-place,
+  #cv .document-contact,
+  #resume .document-place,
+  #resume .document-contact {
+    margin-top: 5px !important;
+    font-size: 9.5pt;
+    line-height: 1.2;
+  }
+
+  #cv .profile-photo,
+  #resume .profile-photo {
+    width: 96px;
+  }
+
+  #cv .document-section,
+  #resume .document-section {
+    margin-top: 12px;
+    padding: 7px 0;
+  }
+
+  #cv .document-section h3,
+  #resume .document-section h3 {
     margin: 0 0 8px;
     padding-bottom: 3px;
     font-size: 12px;
     border-bottom-width: 1px;
   }
 
-  #cv .document-items {
+  #cv .document-items,
+  #resume .document-items {
     gap: 6px;
   }
 
-  #cv .document-item {
+  #cv .document-item,
+  #resume .document-item {
     gap: 2px;
     font-size: 12px;
     line-height: 1.25;
   }
 
   #cv .document-item-title strong,
-  #cv .document-item-title span {
+  #cv .document-item-title span,
+  #resume .document-item-title strong,
+  #resume .document-item-title span {
     font-size: 12px;
     line-height: 1.2;
   }
@@ -1987,21 +2076,29 @@ tbody tr.individual-session td:first-child {
   #cv .document-item-description,
   #cv .document-item p,
   #cv .document-inline-details p,
-  #cv .document-item li {
+  #cv .document-item li,
+  #resume .document-item-meta,
+  #resume .document-item-description,
+  #resume .document-item p,
+  #resume .document-inline-details p,
+  #resume .document-item li {
     font-size: 12px;
     line-height: 1.25;
   }
 
-  #cv .document-item ul {
+  #cv .document-item ul,
+  #resume .document-item ul {
     margin-top: 2px;
     padding-left: 14px;
   }
 
-  #cv .document-item li {
+  #cv .document-item li,
+  #resume .document-item li {
     margin: 1px 0;
   }
 
-  #cv .document-section[data-cv-section="summary"] .document-item p {
+  #cv .document-section[data-cv-section="summary"] .document-item p,
+  #resume .document-section[data-cv-section="summary"] .document-item p {
     line-height: 1.3;
   }
 }
