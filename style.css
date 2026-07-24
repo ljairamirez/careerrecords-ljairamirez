@@ -1959,6 +1959,73 @@ tbody tr.individual-session td:first-child {
   th {
     position: static;
   }
+
+  #schedule.active {
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #schedule.active .panel:not(.schedule-print-panel) {
+    display: none !important;
+  }
+
+  #schedule.active .schedule-print-panel {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #schedule.active .schedule-print-panel .panel-head {
+    display: none !important;
+  }
+
+  #schedule.active .week-scroll {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #schedule.active .week-grid {
+    width: 980px !important;
+    min-width: 980px !important;
+    padding: 8px !important;
+    zoom: 0.68;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #schedule.active .week-day-head,
+  #schedule.active .time-label {
+    min-width: 0 !important;
+    padding: 0 6px !important;
+    font-size: 11px !important;
+    line-height: 1.1 !important;
+  }
+
+  #schedule.active .time-label {
+    position: static !important;
+  }
+
+  #schedule.active .schedule-block {
+    padding: 6px !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+
+  #schedule.active .schedule-block strong,
+  #schedule.active .schedule-block span {
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
 }
 
 .schedule-block.virtual {
