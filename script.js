@@ -3001,8 +3001,12 @@ function saveSchedule(event) {
 
 function saveSettings(event) {
   event.preventDefault();
+  const previousStudents = sortNames(state.settings.students || []);
+  const editedStudents = parseLines($("#settingStudents").value).map(normalizeStudentName).filter((name) => name !== "SUBS");
+  const nextStudents = uniqueNormalizedNames(editedStudents);
   state.settings.tutors = parseLines($("#settingTutors").value);
-  state.settings.students = uniqueNormalizedNames(parseLines($("#settingStudents").value).map(normalizeStudentName).filter((name) => name !== "SUBS"));
+  applyStudentSettingRenames(previousStudents, editedStudents);
+  state.settings.students = nextStudents;
   syncStudentRecords();
   state.settings.packages = parseLines($("#settingPackages").value);
   state.settings.classTypes = parseLines($("#settingClassTypes").value);
@@ -3011,6 +3015,36 @@ function saveSettings(event) {
   saveState();
   hydrateControls();
   render();
+}
+
+function applyStudentSettingRenames(previousStudents, nextStudents) {
+  if (previousStudents.length !== nextStudents.length) return;
+
+  const renameMap = new Map();
+  previousStudents.forEach((oldName, index) => {
+    const newName = nextStudents[index];
+    const oldKey = studentKey(oldName);
+    const newKey = studentKey(newName);
+    if (!oldKey || !newKey || oldKey === newKey) return;
+    renameMap.set(oldKey, newName);
+  });
+
+  if (!renameMap.size) return;
+
+  const renameStudent = (item) => {
+    const replacement = renameMap.get(studentKey(item?.student));
+    if (replacement) item.student = replacement;
+  };
+
+  (state.sessions || []).forEach(renameStudent);
+  (state.schedules || []).forEach(renameStudent);
+  (state.studentRecords || []).forEach((student) => {
+    const replacement = renameMap.get(studentKey(student.name || student.key));
+    if (replacement) {
+      student.name = replacement;
+      student.key = replacement;
+    }
+  });
 }
 
 function upsert(collection, item) {
