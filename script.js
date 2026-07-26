@@ -1665,6 +1665,27 @@ function recentSevenDaySessions() {
     .filter((session) => session.date >= start && session.date <= end);
 }
 
+function currentMonthWindow(baseDate = new Date()) {
+  const today = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return {
+    start: localIsoDate(startDate),
+    today: localIsoDate(today),
+    end: localIsoDate(endDate),
+    elapsedDays: today.getDate(),
+    daysInMonth: endDate.getDate(),
+    remainingDays: Math.max(0, endDate.getDate() - today.getDate())
+  };
+}
+
+function currentMonthToDateSessions(range = currentMonthWindow()) {
+  return state.sessions
+    .filter(hasUsableDate)
+    .filter((session) => session.status !== "Cancelled")
+    .filter((session) => session.date >= range.start && session.date <= range.today);
+}
+
 function recentWeekDailySummary(rows, range) {
   const byDate = groupBy(rows, (session) => session.date);
   const start = isoToLocalDate(range.start);
@@ -1736,7 +1757,10 @@ function renderDashboard() {
   const recentRange = recentSevenDayWindow();
   const recentDays = recentWeekDailySummary(recentRows, recentRange);
   const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
-  const monthlyProjection = (recentTotals.pay / 7) * 30;
+  const currentMonthRange = currentMonthWindow();
+  const monthToDateTotals = summarize(currentMonthToDateSessions(currentMonthRange));
+  const recentDailyPace = recentTotals.pay / 7;
+  const monthlyProjection = monthToDateTotals.pay + (recentDailyPace * currentMonthRange.remainingDays);
   const projectionGrade = salaryGradeProjection(monthlyProjection);
   const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
@@ -1780,11 +1804,11 @@ function renderDashboard() {
   }).join("");
 
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
-    <span>Monthly Projection</span>
+    <span>${escapeHtml(monthName(currentMonthRange.today.slice(0, 7), true))}</span>
     <strong>${money(monthlyProjection)}</strong>
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>${projectionGrade.base ? `Base ${money(projectionGrade.base)}` : "Below SG 1"}</span>
+      <span>${projectionGrade.base ? money(projectionGrade.base) : "Below SG 1"}</span>
     </div>
   </article>`;
 

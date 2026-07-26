@@ -778,18 +778,22 @@ tbody tr.individual-session td:first-child {
   align-items: end;
   grid-template-columns: repeat(12, minmax(36px, 1fr));
   gap: 10px;
-  min-height: 300px;
-  padding: 14px 18px 12px;
+  min-height: 330px;
+  padding: 8px 18px 10px;
 }
 
 .bar {
-  display: grid;
-  align-items: end;
-  gap: 3px;
-  height: 270px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 2px;
+  height: 305px;
+  min-width: 0;
 }
 
 .bar-fill {
+  flex: 0 0 auto;
   min-height: 6px;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #2a7e74, #69a297);
@@ -797,8 +801,8 @@ tbody tr.individual-session td:first-child {
 
 .bar.month-rank-1 .bar-fill,
 .bar.peak-month .bar-fill {
-  background: linear-gradient(180deg, var(--teal), var(--accent));
-  box-shadow: 0 0 0 3px rgba(0, 179, 159, 0.14);
+  background: linear-gradient(180deg, #00d7e6, #007fc7);
+  box-shadow: 0 0 0 3px rgba(0, 215, 230, 0.16);
 }
 
 .bar.month-rank-2 .bar-fill {
@@ -837,15 +841,26 @@ tbody tr.individual-session td:first-child {
 .bar-label,
 .bar-value,
 .bar-grade {
+  flex: 0 0 auto;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.05;
   text-align: center;
 }
 
+.bar-value {
+  margin-bottom: 1px;
+}
+
 .bar-grade {
-  font-size: 9px;
+  margin-top: 3px;
+  margin-bottom: 0;
+  font-size: 11px;
   font-weight: 700;
+}
+
+.bar-label {
+  margin-top: 1px;
 }
 
 .dashboard-visual-row {
@@ -887,30 +902,30 @@ tbody tr.individual-session td:first-child {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: end;
   gap: 8px;
-  min-height: 150px;
+  min-height: 138px;
 }
 
 .week-bar {
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   align-items: end;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  height: 150px;
+  height: 138px;
 }
 
 .week-fill {
   min-height: 3px;
   border-radius: 5px 5px 0 0;
-  background: linear-gradient(180deg, #7a4cc2, #98b2ff);
+  background: linear-gradient(180deg, #2a7e74, #69a297);
 }
 
 .week-bar.day-rank-1 .week-fill {
-  background: linear-gradient(180deg, var(--blue), #5a9cff);
+  background: linear-gradient(180deg, #00d7e6, #007fc7);
 }
 
 .week-bar.day-rank-2 .week-fill {
-  background: linear-gradient(180deg, var(--teal), #57c9bb);
+  background: linear-gradient(180deg, #0052cc, #4a8dff);
 }
 
 .week-bar.day-rank-3 .week-fill {
@@ -918,7 +933,6 @@ tbody tr.individual-session td:first-child {
 }
 
 .week-bar.today-bar .week-fill {
-  background: linear-gradient(180deg, #1f62ff, #7a4cc2);
   box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.12);
 }
 
@@ -942,7 +956,7 @@ tbody tr.individual-session td:first-child {
 
 .projection-card {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .projection-card span {
@@ -952,7 +966,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .projection-card strong {
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1.05;
 }
 
@@ -962,9 +976,11 @@ tbody tr.individual-session td:first-child {
 
 .salary-grade-chip {
   display: grid;
-  gap: 4px;
-  margin-top: 4px;
-  padding: 10px 12px;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-top: 1px;
+  padding: 8px 10px;
   border-left: 5px solid var(--gold);
   border-radius: 8px;
   background: #fff8e9;
