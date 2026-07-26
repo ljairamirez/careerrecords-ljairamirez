@@ -1834,8 +1834,8 @@ function renderSchedule() {
 
 function renderWeekly() {
   const startHour = 8;
-  const endHour = 24;
-  const pixelsPerHour = 72;
+  const endHour = 23;
+  const pixelsPerHour = 56;
   const rows = endHour - startHour;
   const timeLabels = Array.from({ length: rows + 1 }, (_, index) => {
     const hour = startHour + index;
@@ -1874,7 +1874,7 @@ function scheduleBlocksForDay(items, startHour, endHour, pixelsPerHour) {
   const columnCount = Math.max(1, columnEnds.length);
   return blocks.map((block) => {
     const top = (block.start - startHour) * pixelsPerHour;
-    const height = Math.max(48, (block.end - block.start) * pixelsPerHour - 6);
+    const height = Math.max(34, (block.end - block.start) * pixelsPerHour - 4);
     const left = `calc(${(block.column / columnCount) * 100}% + 6px)`;
     const width = `calc(${100 / columnCount}% - 12px)`;
     return `<div class="schedule-block ${normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(formatScheduleTimeRange(block.item.start, block.item.end))}</span></div>`;
@@ -3348,7 +3348,9 @@ function sessionTypeClass(session) {
 }
 
 function scheduleTypeClass(item) {
-  return isGroupName(item.student) ? "group-session" : "individual-session";
+  const typeClass = isGroupName(item.student) ? "group-session" : "individual-session";
+  const oneTime = /^one-time$/i.test(item.frequency || item.status || "");
+  return oneTime ? `${typeClass} one-time-session` : typeClass;
 }
 
 function isGroupSession(session) {
