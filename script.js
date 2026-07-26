@@ -52,6 +52,12 @@ const studyBuddyRatePackages = [
   { packageName: "Group (10+)", amount: 550 }
 ];
 const studyBuddyRateModes = ["Virtual", "F2F", "Hybrid"];
+const salaryGradeStepOne2026 = [
+  14634, 15522, 16486, 17506, 18581, 19716, 20914, 22423, 24329, 26917, 31705,
+  33947, 36125, 38764, 42178, 45694, 49562, 53818, 59153, 66052, 73303, 81796,
+  91306, 102603, 116643, 131807, 148940, 167129, 187531, 210718, 300961,
+  356237, 449157
+];
 
 const sourceCvSections = [
   {
@@ -898,6 +904,11 @@ function localIsoDate(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+function isoToLocalDate(dateString) {
+  const [year, month, day] = String(dateString || "").split("-").map(Number);
+  return new Date(year || 1970, (month || 1) - 1, day || 1);
+}
+
 function hasStoredState() {
   try {
     return Boolean(localStorage.getItem(STORAGE_KEY));
@@ -1654,6 +1665,53 @@ function recentSevenDaySessions() {
     .filter((session) => session.date >= start && session.date <= end);
 }
 
+function recentWeekDailySummary(rows, range) {
+  const byDate = groupBy(rows, (session) => session.date);
+  const start = isoToLocalDate(range.start);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const iso = localIsoDate(date);
+    const items = byDate[iso] || [];
+    return {
+      date: iso,
+      ...summarize(items)
+    };
+  });
+}
+
+function salaryGradeProjection(amount) {
+  if (!amount) {
+    return {
+      label: "No salary grade yet",
+      base: 0,
+      next: { grade: 1, base: salaryGradeStepOne2026[0] }
+    };
+  }
+
+  let match = null;
+  let next = null;
+  salaryGradeStepOne2026.forEach((base, index) => {
+    const grade = index + 1;
+    if (amount >= base) match = { grade, base };
+    else if (!next) next = { grade, base };
+  });
+
+  if (!match) {
+    return {
+      label: "Below SG 1",
+      base: 0,
+      next: { grade: 1, base: salaryGradeStepOne2026[0] }
+    };
+  }
+
+  return {
+    label: `SG ${match.grade} Step 1`,
+    base: match.base,
+    next
+  };
+}
+
 function renderDashboard() {
   const rows = dashboardSessions();
   const totals = summarize(rows);
@@ -1661,6 +1719,13 @@ function renderDashboard() {
   const recentRows = recentSevenDaySessions();
   const recentTotals = summarize(recentRows);
   const recentRange = recentSevenDayWindow();
+  const recentDays = recentWeekDailySummary(recentRows, recentRange);
+  const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
+  const monthlyProjection = (recentTotals.pay / 7) * 30;
+  const projectionGrade = salaryGradeProjection(monthlyProjection);
+  const nextGradeText = projectionGrade.next
+    ? `Next: SG ${projectionGrade.next.grade} at ${money(projectionGrade.next.base)}`
+    : "Above SG 33 Step 1";
   const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
   const pending = sum(allRows.filter((row) => row.status === "Pending"), totalPay);
@@ -1687,13 +1752,36 @@ function renderDashboard() {
     return `<div class="bar${peakClass}"><span class="bar-value">${moneyShort(row.pay)}</span><span class="bar-fill" style="height:${height}%"></span><span class="bar-label">${escapeHtml(monthName(row.month, true))}</span></div>`;
   }).join("") || `<p class="empty">No monthly data yet.</p>`;
 
+  $("#recentWeekRange").textContent = `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`;
+  $("#recentWeekChart").innerHTML = recentDays.map((row) => {
+    const height = Math.max(row.pay ? 8 : 3, (row.pay / recentDayMax) * 100);
+    const todayClass = row.date === recentRange.end ? " today-bar" : "";
+    return `<div class="week-bar${todayClass}">
+      <span class="week-value">${row.pay ? moneyShort(row.pay) : "PHP 0"}</span>
+      <span class="week-fill" style="height:${height}%"></span>
+      <span class="week-day">${escapeHtml(dayName(row.date).slice(0, 3))}</span>
+      <span class="week-date">${escapeHtml(formatShortDate(row.date))}</span>
+    </div>`;
+  }).join("");
+
+  $("#projectionMetrics").innerHTML = `<article class="projection-card">
+    <span>Projected Monthly Earnings</span>
+    <strong>${money(monthlyProjection)}</strong>
+    <small>Based on ${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}</small>
+    <div class="salary-grade-chip">
+      <b>${escapeHtml(projectionGrade.label)}</b>
+      <span>${projectionGrade.base ? `2026 Step 1 base: ${money(projectionGrade.base)}` : "Below 2026 SG Step 1 base"}</span>
+      <small>${escapeHtml(nextGradeText)}</small>
+    </div>
+  </article>`;
+
   $("#averageMetrics").innerHTML = [
     metric("Avg Hours / Day", number(avgHours), activeDays ? `${activeDays} logged days` : "No logged days", "unclaimed"),
     metric("Avg Earnings / Day", money(avgEarnings), monthLabel, "earnings")
   ].join("");
 
   $("#recentSevenMetrics").innerHTML = [
-    metric("7-Day Earnings", money(recentTotals.pay), `${formatDate(recentRange.start)} - ${formatDate(recentRange.end)}`, "earnings"),
+    metric("7-Day Earnings", money(recentTotals.pay), `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`, "earnings"),
     metric("7-Day Hours", number(recentTotals.hours), `${recentTotals.sessions} sessions`, "unclaimed"),
     metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "earnings today", "total")
   ].join("");
@@ -3953,6 +4041,11 @@ function formatTimeRange(start, end) {
 function formatDate(dateString) {
   if (!dateString) return "";
   return new Date(dateString + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatShortDate(dateString) {
+  if (!dateString) return "";
+  return new Date(dateString + "T00:00:00").toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" });
 }
 
 function formatDateTime(dateString) {

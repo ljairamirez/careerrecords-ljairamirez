@@ -789,6 +789,120 @@ tbody tr.individual-session td:first-child {
   text-align: center;
 }
 
+.dashboard-visual-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(230px, 0.75fr);
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+
+.mini-panel {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5fbff, #effbf8);
+}
+
+.mini-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mini-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.mini-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.week-chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
+  min-height: 150px;
+}
+
+.week-bar {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  align-items: end;
+  gap: 4px;
+  min-width: 0;
+  height: 150px;
+}
+
+.week-fill {
+  min-height: 3px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(180deg, var(--teal), #4fa99f);
+}
+
+.week-bar.today-bar .week-fill {
+  background: linear-gradient(180deg, var(--blue), #00b39f);
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.12);
+}
+
+.week-value,
+.week-day,
+.week-date {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-bar.today-bar .week-day,
+.week-bar.today-bar .week-date,
+.week-bar.today-bar .week-value {
+  color: var(--blue);
+}
+
+.projection-card {
+  display: grid;
+  gap: 8px;
+}
+
+.projection-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projection-card strong {
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.projection-card small {
+  color: var(--muted);
+}
+
+.salary-grade-chip {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-left: 5px solid var(--gold);
+  border-radius: 8px;
+  background: #fff8e9;
+}
+
+.salary-grade-chip b {
+  font-size: 16px;
+}
+
 .status-stack {
   display: grid;
   gap: 12px;
@@ -1669,6 +1783,7 @@ tbody tr.individual-session td:first-child {
   .topbar,
   .cv-builder-grid,
   .split,
+  .dashboard-visual-row,
   .release-head {
     grid-template-columns: 1fr;
     flex-direction: column;
