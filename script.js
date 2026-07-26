@@ -1759,8 +1759,8 @@ function renderDashboard() {
   const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
   const currentMonthRange = currentMonthWindow();
   const monthToDateTotals = summarize(currentMonthToDateSessions(currentMonthRange));
-  const recentDailyPace = recentTotals.pay / 7;
-  const monthlyProjection = monthToDateTotals.pay + (recentDailyPace * currentMonthRange.remainingDays);
+  const monthDailyPace = monthToDateTotals.pay / Math.max(1, currentMonthRange.elapsedDays);
+  const monthlyProjection = Math.max(monthToDateTotals.pay, monthDailyPace * currentMonthRange.daysInMonth);
   const projectionGrade = salaryGradeProjection(monthlyProjection);
   const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
@@ -1783,7 +1783,7 @@ function renderDashboard() {
   const max = Math.max(1, ...months.map((row) => row.pay));
   const monthRankValues = topValues(months.map((row) => row.pay), 3);
   $("#monthlyChart").innerHTML = months.map((row) => {
-    const height = Math.max(4, (row.pay / max) * 100);
+    const height = Math.max(4, (row.pay / max) * 84);
     const rankClass = rankClassForValue(row.pay, monthRankValues, "month-rank");
     const grade = salaryGradeProjection(row.pay);
     return `<div class="bar ${rankClass}"><span class="bar-value">${moneyShort(row.pay)}</span><span class="bar-fill" style="height:${height}%"></span><span class="bar-grade">${escapeHtml(shortSalaryGradeLabel(grade))}</span><span class="bar-label">${escapeHtml(monthName(row.month, true))}</span></div>`;
@@ -1792,7 +1792,7 @@ function renderDashboard() {
   $("#recentWeekRange").textContent = `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`;
   const recentRankValues = topValues(recentDays.map((row) => row.pay), 3);
   $("#recentWeekChart").innerHTML = recentDays.map((row) => {
-    const height = Math.max(row.pay ? 8 : 3, (row.pay / recentDayMax) * 100);
+    const height = Math.max(row.pay ? 8 : 3, (row.pay / recentDayMax) * 88);
     const todayClass = row.date === recentRange.end ? " today-bar" : "";
     const rankClass = rankClassForValue(row.pay, recentRankValues, "day-rank");
     return `<div class="week-bar ${rankClass}${todayClass}">

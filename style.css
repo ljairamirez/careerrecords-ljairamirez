@@ -778,8 +778,8 @@ tbody tr.individual-session td:first-child {
   align-items: end;
   grid-template-columns: repeat(12, minmax(36px, 1fr));
   gap: 10px;
-  min-height: 330px;
-  padding: 8px 18px 10px;
+  min-height: 286px;
+  padding: 8px 18px 8px;
 }
 
 .bar {
@@ -788,7 +788,7 @@ tbody tr.individual-session td:first-child {
   justify-content: flex-end;
   align-items: stretch;
   gap: 2px;
-  height: 305px;
+  height: 258px;
   min-width: 0;
 }
 
@@ -843,7 +843,7 @@ tbody tr.individual-session td:first-child {
 .bar-grade {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.05;
   text-align: center;
 }
@@ -865,14 +865,14 @@ tbody tr.individual-session td:first-child {
 
 .dashboard-visual-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(230px, 0.75fr);
-  gap: 14px;
-  padding: 0 18px 18px;
+  grid-template-columns: minmax(0, 1.42fr) minmax(210px, 0.58fr);
+  gap: 12px;
+  padding: 0 18px 14px;
 }
 
 .mini-panel {
   min-width: 0;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: linear-gradient(135deg, #f5fbff, #effbf8);
@@ -883,7 +883,7 @@ tbody tr.individual-session td:first-child {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .mini-head h3 {
@@ -902,7 +902,7 @@ tbody tr.individual-session td:first-child {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: end;
   gap: 8px;
-  min-height: 138px;
+  min-height: 126px;
 }
 
 .week-bar {
@@ -911,7 +911,7 @@ tbody tr.individual-session td:first-child {
   align-items: end;
   gap: 3px;
   min-width: 0;
-  height: 138px;
+  height: 126px;
 }
 
 .week-fill {
@@ -956,7 +956,8 @@ tbody tr.individual-session td:first-child {
 
 .projection-card {
   display: grid;
-  gap: 5px;
+  align-content: start;
+  gap: 4px;
 }
 
 .projection-card span {
@@ -966,7 +967,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .projection-card strong {
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.05;
 }
 
@@ -979,8 +980,8 @@ tbody tr.individual-session td:first-child {
   grid-template-columns: auto 1fr;
   align-items: baseline;
   gap: 4px 8px;
-  margin-top: 1px;
-  padding: 8px 10px;
+  margin-top: 0;
+  padding: 7px 9px;
   border-left: 5px solid var(--gold);
   border-radius: 8px;
   background: #fff8e9;
@@ -988,6 +989,10 @@ tbody tr.individual-session td:first-child {
 
 .salary-grade-chip b {
   font-size: 16px;
+}
+
+.salary-grade-chip span {
+  font-size: 12px;
 }
 
 .status-stack {
