@@ -603,21 +603,36 @@ textarea:focus {
 
 .dashboard-side {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 18px;
   min-height: 100%;
 }
 
-.average-grid {
+.average-grid,
+.recent-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 14px;
 }
 
-.average-grid .metric {
+.recent-grid {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.average-grid .metric,
+.recent-grid .metric {
   min-height: 92px;
   box-shadow: none;
+}
+
+.recent-grid .metric {
+  min-height: 82px;
+  padding: 13px 12px;
+}
+
+.recent-grid .metric strong {
+  font-size: 21px;
 }
 
 .table-wrap {

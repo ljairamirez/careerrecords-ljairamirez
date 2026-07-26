@@ -893,6 +893,11 @@ function isoDaysAgo(daysAgo) {
   return date.toISOString().slice(0, 10);
 }
 
+function localIsoDate(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 function hasStoredState() {
   try {
     return Boolean(localStorage.getItem(STORAGE_KEY));
@@ -1631,10 +1636,31 @@ function dashboardSessions() {
     .filter((session) => session.status !== "Cancelled");
 }
 
+function recentSevenDayWindow(baseDate = new Date()) {
+  const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - 6);
+  return {
+    start: localIsoDate(startDate),
+    end: localIsoDate(endDate)
+  };
+}
+
+function recentSevenDaySessions() {
+  const { start, end } = recentSevenDayWindow();
+  return state.sessions
+    .filter(hasUsableDate)
+    .filter((session) => session.status !== "Cancelled")
+    .filter((session) => session.date >= start && session.date <= end);
+}
+
 function renderDashboard() {
   const rows = dashboardSessions();
   const totals = summarize(rows);
   const allRows = state.sessions.filter((row) => row.status !== "Cancelled");
+  const recentRows = recentSevenDaySessions();
+  const recentTotals = summarize(recentRows);
+  const recentRange = recentSevenDayWindow();
   const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
   const pending = sum(allRows.filter((row) => row.status === "Pending"), totalPay);
@@ -1664,6 +1690,12 @@ function renderDashboard() {
   $("#averageMetrics").innerHTML = [
     metric("Avg Hours / Day", number(avgHours), activeDays ? `${activeDays} logged days` : "No logged days", "unclaimed"),
     metric("Avg Earnings / Day", money(avgEarnings), monthLabel, "earnings")
+  ].join("");
+
+  $("#recentSevenMetrics").innerHTML = [
+    metric("7-Day Earnings", money(recentTotals.pay), `${formatDate(recentRange.start)} - ${formatDate(recentRange.end)}`, "earnings"),
+    metric("7-Day Hours", number(recentTotals.hours), `${recentTotals.sessions} sessions`, "unclaimed"),
+    metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "earnings today", "total")
   ].join("");
 
   const statusRows = [
