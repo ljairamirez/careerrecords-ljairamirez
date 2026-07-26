@@ -684,12 +684,36 @@ tbody tr.claiming-row:hover {
   background: #c9dcf7;
 }
 
-tbody tr.peak-row {
+tbody tr.peak-row-1 {
   background: #e5fbf8;
 }
 
-tbody tr.peak-row:hover {
+tbody tr.peak-row-1:hover {
   background: #d6f6f1;
+}
+
+tbody tr.peak-row-2 {
+  background: #eef5ff;
+}
+
+tbody tr.peak-row-2:hover {
+  background: #e1edff;
+}
+
+tbody tr.peak-row-3 {
+  background: #fff7e8;
+}
+
+tbody tr.peak-row-3:hover {
+  background: #ffefcf;
+}
+
+tbody tr.group-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total) {
+  background: #fffaf0;
+}
+
+tbody tr.group-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):hover {
+  background: #fff2d9;
 }
 
 tbody tr.group-session td:first-child {
@@ -771,22 +795,56 @@ tbody tr.individual-session td:first-child {
   background: linear-gradient(180deg, #2a7e74, #69a297);
 }
 
+.bar.month-rank-1 .bar-fill,
 .bar.peak-month .bar-fill {
   background: linear-gradient(180deg, var(--teal), var(--accent));
   box-shadow: 0 0 0 3px rgba(0, 179, 159, 0.14);
 }
 
+.bar.month-rank-2 .bar-fill {
+  background: linear-gradient(180deg, #0052cc, #4a8dff);
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.12);
+}
+
+.bar.month-rank-3 .bar-fill {
+  background: linear-gradient(180deg, #d09017, #f2bd55);
+  box-shadow: 0 0 0 3px rgba(208, 144, 23, 0.12);
+}
+
+.bar.month-rank-1 .bar-label,
+.bar.month-rank-1 .bar-value,
+.bar.month-rank-1 .bar-grade,
 .bar.peak-month .bar-label,
 .bar.peak-month .bar-value {
   color: var(--accent);
   font-weight: 700;
 }
 
+.bar.month-rank-2 .bar-label,
+.bar.month-rank-2 .bar-value,
+.bar.month-rank-2 .bar-grade {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.bar.month-rank-3 .bar-label,
+.bar.month-rank-3 .bar-value,
+.bar.month-rank-3 .bar-grade {
+  color: #9a6800;
+  font-weight: 700;
+}
+
 .bar-label,
-.bar-value {
+.bar-value,
+.bar-grade {
   color: var(--muted);
   font-size: 11px;
   text-align: center;
+}
+
+.bar-grade {
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .dashboard-visual-row {
@@ -843,11 +901,23 @@ tbody tr.individual-session td:first-child {
 .week-fill {
   min-height: 3px;
   border-radius: 5px 5px 0 0;
-  background: linear-gradient(180deg, var(--teal), #4fa99f);
+  background: linear-gradient(180deg, #7a4cc2, #98b2ff);
+}
+
+.week-bar.day-rank-1 .week-fill {
+  background: linear-gradient(180deg, var(--blue), #5a9cff);
+}
+
+.week-bar.day-rank-2 .week-fill {
+  background: linear-gradient(180deg, var(--teal), #57c9bb);
+}
+
+.week-bar.day-rank-3 .week-fill {
+  background: linear-gradient(180deg, #d09017, #f2bd55);
 }
 
 .week-bar.today-bar .week-fill {
-  background: linear-gradient(180deg, var(--blue), #00b39f);
+  background: linear-gradient(180deg, #1f62ff, #7a4cc2);
   box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.12);
 }
 
@@ -1719,6 +1789,26 @@ tbody tr.individual-session td:first-child {
   background: #c9daf8;
   color: #172126;
   font-size: 14px;
+  border-top: 3px solid #0052cc;
+  border-right: 2px solid #0052cc;
+  border-left: 2px solid #0052cc;
+}
+
+.claim-package-head.group-session td {
+  background: #ffe8bd;
+  border-color: #d09017;
+}
+
+.claim-row td:first-child {
+  border-left-width: 2px;
+}
+
+.claim-row td:last-child {
+  border-right: 2px solid #0052cc;
+}
+
+.claim-row.group-session td:last-child {
+  border-right-color: #d09017;
 }
 
 .claim-package-head strong,
@@ -1730,6 +1820,28 @@ tbody tr.individual-session td:first-child {
 .claim-package-total td {
   background: #e8eef4;
   font-weight: 700;
+  border-bottom: 3px solid #0052cc;
+}
+
+.claim-package-total td:first-child {
+  border-left: 2px solid #0052cc;
+}
+
+.claim-package-total td:last-child {
+  border-right: 2px solid #0052cc;
+}
+
+.claim-package-total.group-session td {
+  background: #fff3dd;
+  border-bottom-color: #d09017;
+}
+
+.claim-package-total.group-session td:first-child {
+  border-left-color: #d09017;
+}
+
+.claim-package-total.group-session td:last-child {
+  border-right-color: #d09017;
 }
 
 .group-summary {
@@ -2372,5 +2484,39 @@ tbody tr.individual-session td:first-child {
   #claiming table {
     min-width: 0 !important;
     width: 100% !important;
+    border-collapse: collapse !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #claiming .table-wrap {
+    overflow: visible !important;
+  }
+
+  #claiming th,
+  #claiming td {
+    padding: 6px 7px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  #claiming .claim-package-head {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  #claiming .claim-package-head td {
+    padding: 7px !important;
+    font-size: 11px !important;
+  }
+
+  #claiming .claim-row,
+  #claiming .claim-package-total {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #claiming .claim-package-total td {
+    padding: 7px !important;
   }
 }

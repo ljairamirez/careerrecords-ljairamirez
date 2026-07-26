@@ -1712,6 +1712,21 @@ function salaryGradeProjection(amount) {
   };
 }
 
+function shortSalaryGradeLabel(grade) {
+  const match = String(grade?.label || "").match(/SG\s+\d+/i);
+  return match ? match[0].toUpperCase() : grade?.label || "No SG";
+}
+
+function topValues(values, count = 3) {
+  return [...new Set(values.filter((value) => value > 0).sort((a, b) => b - a))].slice(0, count);
+}
+
+function rankClassForValue(value, rankedValues, prefix) {
+  const index = rankedValues.indexOf(value);
+  if (index < 0) return "";
+  return `${prefix}-${index + 1}`;
+}
+
 function renderDashboard() {
   const rows = dashboardSessions();
   const totals = summarize(rows);
@@ -1723,9 +1738,6 @@ function renderDashboard() {
   const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
   const monthlyProjection = (recentTotals.pay / 7) * 30;
   const projectionGrade = salaryGradeProjection(monthlyProjection);
-  const nextGradeText = projectionGrade.next
-    ? `Next: SG ${projectionGrade.next.grade} at ${money(projectionGrade.next.base)}`
-    : "Above SG 33 Step 1";
   const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
   const pending = sum(allRows.filter((row) => row.status === "Pending"), totalPay);
@@ -1745,18 +1757,21 @@ function renderDashboard() {
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
   const max = Math.max(1, ...months.map((row) => row.pay));
-  const peakMonthPay = Math.max(0, ...months.map((row) => row.pay));
+  const monthRankValues = topValues(months.map((row) => row.pay), 3);
   $("#monthlyChart").innerHTML = months.map((row) => {
     const height = Math.max(4, (row.pay / max) * 100);
-    const peakClass = row.pay === peakMonthPay ? " peak-month" : "";
-    return `<div class="bar${peakClass}"><span class="bar-value">${moneyShort(row.pay)}</span><span class="bar-fill" style="height:${height}%"></span><span class="bar-label">${escapeHtml(monthName(row.month, true))}</span></div>`;
+    const rankClass = rankClassForValue(row.pay, monthRankValues, "month-rank");
+    const grade = salaryGradeProjection(row.pay);
+    return `<div class="bar ${rankClass}"><span class="bar-value">${moneyShort(row.pay)}</span><span class="bar-fill" style="height:${height}%"></span><span class="bar-grade">${escapeHtml(shortSalaryGradeLabel(grade))}</span><span class="bar-label">${escapeHtml(monthName(row.month, true))}</span></div>`;
   }).join("") || `<p class="empty">No monthly data yet.</p>`;
 
   $("#recentWeekRange").textContent = `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`;
+  const recentRankValues = topValues(recentDays.map((row) => row.pay), 3);
   $("#recentWeekChart").innerHTML = recentDays.map((row) => {
     const height = Math.max(row.pay ? 8 : 3, (row.pay / recentDayMax) * 100);
     const todayClass = row.date === recentRange.end ? " today-bar" : "";
-    return `<div class="week-bar${todayClass}">
+    const rankClass = rankClassForValue(row.pay, recentRankValues, "day-rank");
+    return `<div class="week-bar ${rankClass}${todayClass}">
       <span class="week-value">${row.pay ? moneyShort(row.pay) : "PHP 0"}</span>
       <span class="week-fill" style="height:${height}%"></span>
       <span class="week-day">${escapeHtml(dayName(row.date).slice(0, 3))}</span>
@@ -1765,13 +1780,11 @@ function renderDashboard() {
   }).join("");
 
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
-    <span>Projected Monthly Earnings</span>
+    <span>Monthly Projection</span>
     <strong>${money(monthlyProjection)}</strong>
-    <small>Based on ${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}</small>
     <div class="salary-grade-chip">
-      <b>${escapeHtml(projectionGrade.label)}</b>
-      <span>${projectionGrade.base ? `2026 Step 1 base: ${money(projectionGrade.base)}` : "Below 2026 SG Step 1 base"}</span>
-      <small>${escapeHtml(nextGradeText)}</small>
+      <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
+      <span>${projectionGrade.base ? `Base ${money(projectionGrade.base)}` : "Below SG 1"}</span>
     </div>
   </article>`;
 
@@ -1798,10 +1811,11 @@ function renderDashboard() {
 
   const rankedDays = dailySummary(rows)
     .sort((a, b) => b.pay - a.pay || b.date.localeCompare(a.date));
-  const peakPay = Math.max(0, ...rankedDays.map((row) => row.pay));
-  $("#peakDays").innerHTML = rankedDays.slice(0, 6).map((row) => (
-    `<tr class="${row.pay === peakPay ? "peak-row" : ""}"><td>${formatDate(row.date)}</td><td>${escapeHtml(dayName(row.date))}</td><td>${row.sessions}</td><td>${number(row.hours)}</td><td>${money(row.pay)}</td></tr>`
-  )).join("") || emptyRow(5);
+  const peakDayRankValues = topValues(rankedDays.map((row) => row.pay), 3);
+  $("#peakDays").innerHTML = rankedDays.slice(0, 6).map((row) => {
+    const rankClass = rankClassForValue(row.pay, peakDayRankValues, "peak-row");
+    return `<tr class="${rankClass}"><td>${formatDate(row.date)}</td><td>${escapeHtml(dayName(row.date))}</td><td>${row.sessions}</td><td>${number(row.hours)}</td><td>${money(row.pay)}</td></tr>`;
+  }).join("") || emptyRow(5);
 
   $("#unclaimedStudentRows").innerHTML = unclaimedByStudent().map((row) => (
     `<tr><td>${escapeHtml(row.student)}</td><td>${row.sessions}</td><td>${number(row.hours)}</td><td>${money(row.claiming)}</td><td>${money(row.open)}</td><td>${money(row.pay)}</td></tr>`
@@ -2056,7 +2070,8 @@ function renderClaiming() {
     metric("Claim Date", $("#claimDate").value ? formatDate($("#claimDate").value) : "Not set", "salary release")
   ].join("");
 
-  const groups = packageSummaries(rows);
+  const groups = packageSummaries(rows)
+    .sort((a, b) => a.student.localeCompare(b.student) || (packageNumber(a.label) ?? 999) - (packageNumber(b.label) ?? 999) || a.label.localeCompare(b.label));
   $("#claimRows").innerHTML = groups.map((pkg) => {
     const typeClass = pkg.sessions.some(isGroupSession) ? "group-session" : "individual-session";
     const body = pkg.sessions.map((session) => (
