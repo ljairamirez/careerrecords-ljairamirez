@@ -778,15 +778,15 @@ tbody tr.individual-session td:first-child {
   align-items: end;
   grid-template-columns: repeat(12, minmax(36px, 1fr));
   gap: 10px;
-  min-height: 260px;
-  padding: 18px;
+  min-height: 300px;
+  padding: 14px 18px 12px;
 }
 
 .bar {
   display: grid;
   align-items: end;
-  gap: 7px;
-  height: 220px;
+  gap: 3px;
+  height: 270px;
 }
 
 .bar-fill {
@@ -839,11 +839,12 @@ tbody tr.individual-session td:first-child {
 .bar-grade {
   color: var(--muted);
   font-size: 11px;
+  line-height: 1.05;
   text-align: center;
 }
 
 .bar-grade {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 
