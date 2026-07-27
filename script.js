@@ -1966,9 +1966,6 @@ function renderDashboard() {
     </div>`;
   }).join("");
 
-  const oneTimeProjectionNote = nextMonthProjection.oneTimeHours
-    ? ` + ${number(nextMonthProjection.oneTimeHours)} one-time hrs`
-    : "";
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
     <div class="projection-lines">
       <div><span>${escapeHtml(currentMonthLabel)}</span><strong>${money(monthlyProjection)}</strong></div>
@@ -1977,7 +1974,7 @@ function renderDashboard() {
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
       <span>Current: ${currentMonthLoggedDays} logged days</span>
-      <span class="salary-grade-next">Next: ${number(nextMonthProjection.weeklyHours)} hrs/week${escapeHtml(oneTimeProjectionNote)}</span>
+      <span class="salary-grade-next">Next: ${number(nextMonthProjection.weeklyHours)} hrs/week</span>
     </div>
     <div class="projection-grade-summary">
       <span>Salary Grade Step</span><strong>${escapeHtml(projectionGrade.label)}</strong>
