@@ -1180,9 +1180,10 @@ async function initializeCloudSync() {
       const remoteState = migrateState(payload.state);
       cloudSync.lastSavedAt = payload.updatedAt || "";
       state = remoteState;
+      const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      cloudSync.dirty = false;
-      cloudSync.saveQueued = false;
+      cloudSync.dirty = cleanedOneTimeSchedules;
+      cloudSync.saveQueued = cleanedOneTimeSchedules;
       hydrateControls();
       render();
       migrateLegacyRecordAttachments();
@@ -1328,11 +1329,13 @@ async function refreshCloudState() {
     const payload = await response.json();
     if (!payload?.state || !payload.updatedAt || payload.updatedAt === cloudSync.lastSavedAt) return;
     state = migrateState(payload.state);
+    const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     cloudSync.lastSavedAt = payload.updatedAt;
     cloudSync.error = "";
     hydrateControls();
     render();
+    if (cleanedOneTimeSchedules) saveState();
     renderCloudStatus();
   } catch (error) {
     cloudSync.error = error.message || "Cloud refresh failed";
@@ -1780,12 +1783,13 @@ function oneTimeScheduleIsLapsed(item, baseDate = new Date()) {
   return occurrence ? occurrence.end < baseDate : false;
 }
 
-function removeLapsedOneTimeSchedules(baseDate = new Date()) {
+function removeLapsedOneTimeSchedules(baseDate = new Date(), persist = true) {
   const schedules = state.schedules || [];
   const nextSchedules = schedules.filter((item) => !oneTimeScheduleIsLapsed(item, baseDate));
-  if (nextSchedules.length === schedules.length) return;
+  if (nextSchedules.length === schedules.length) return false;
   state.schedules = nextSchedules;
-  saveState();
+  if (persist) saveState();
+  return true;
 }
 
 function scheduledProjectionForMonth(range, hourlyRate = 300) {
@@ -1961,17 +1965,6 @@ function renderDashboard() {
       <span class="week-date">${escapeHtml(formatShortDate(row.date))}</span>
     </div>`;
   }).join("");
-
-  $("#projectionMetrics").innerHTML = `<article class="projection-card">
-    <div class="projection-lines">
-      <div><span>${escapeHtml(currentMonthLabel)}</span><strong>${money(monthlyProjection)}</strong></div>
-      <div><span>${escapeHtml(monthName(nextMonthRange.month))}</span><strong>${money(nextMonthProjection.pay)}</strong></div>
-    </div>
-    <div class="salary-grade-chip">
-      <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>Current: ${currentMonthLoggedDays} logged days · Next: ${number(nextMonthProjection.hours)} hrs @ PHP 300/hr</span>
-    </div>
-  </article>`;
 
   const oneTimeProjectionNote = nextMonthProjection.oneTimeHours
     ? ` + ${number(nextMonthProjection.oneTimeHours)} one-time hrs`
