@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Career Records</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -48,7 +48,6 @@
         <a href="#personal-packages" data-view="personal-packages">Per Package</a>
         <a href="#personal-students" data-view="personal-students">Per Student</a>
       </details>
-      <a href="#rates" data-view="rates">Rates</a>
       <a href="#settings" data-view="settings">Settings</a>
       <details class="nav-group records-nav">
         <summary>Records</summary>
@@ -92,7 +91,7 @@
               <span><i class="legend-swatch legend-current"></i>Current month</span>
               <span><i class="legend-swatch legend-top"></i>Top month</span>
               <span><i class="legend-swatch legend-projection"></i>Projected</span>
-              <em>Grade = 2026 salary grade</em>
+              <em>SG = 2026 salary grade</em>
             </div>
           </div>
           <div class="bar-chart" id="monthlyChart"></div>
@@ -247,30 +246,6 @@
           <table>
             <thead><tr><th>Day</th><th>Time</th><th>Student</th><th>Mode</th><th>Frequency</th><th>Status</th><th>Notes</th><th></th></tr></thead>
             <tbody id="scheduleRows"></tbody>
-          </table>
-        </div>
-      </section>
-    </section>
-
-    <section class="view" id="rates" data-title="Rates">
-      <section class="panel form-panel">
-        <div class="panel-head"><h2>Add Rate</h2></div>
-        <form class="grid-form" id="rateForm">
-          <input type="hidden" id="rateId">
-          <label><span>Tutor</span><select id="rateTutor"></select></label>
-          <label><span>Class Type</span><select id="rateClassType"></select></label>
-          <label><span>Mode</span><select id="rateMode"></select></label>
-          <label><span>Package / Batch</span><select id="ratePackage"></select></label>
-          <label><span>Rate per Hour</span><input id="rateAmount" type="number" min="0" step="0.01" required></label>
-          <button class="primary" type="submit">Save Rate</button>
-        </form>
-      </section>
-      <section class="panel">
-        <div class="panel-head"><h2>Rate Reference</h2></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Tutor</th><th>Class Type</th><th>Mode</th><th>Package</th><th>Rate</th><th></th></tr></thead>
-            <tbody id="rateRows"></tbody>
           </table>
         </div>
       </section>
@@ -456,6 +431,27 @@
           <button class="primary" type="submit">Save Settings</button>
         </form>
       </section>
+      <section class="panel form-panel">
+        <div class="panel-head"><h2>Rates</h2></div>
+        <form class="grid-form" id="rateForm">
+          <input type="hidden" id="rateId">
+          <label><span>Tutor</span><select id="rateTutor"></select></label>
+          <label><span>Class Type</span><select id="rateClassType"></select></label>
+          <label><span>Mode</span><select id="rateMode"></select></label>
+          <label><span>Package / Batch</span><select id="ratePackage"></select></label>
+          <label><span>Rate per Hour</span><input id="rateAmount" type="number" min="0" step="0.01" required></label>
+          <button class="primary" type="submit">Save Rate</button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Rate Reference</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tutor</th><th>Class Type</th><th>Mode</th><th>Package</th><th>Rate</th><th></th></tr></thead>
+            <tbody id="rateRows"></tbody>
+          </table>
+        </div>
+      </section>
       <section class="panel">
         <div class="panel-head">
           <h2>Student Status</h2>
@@ -604,7 +600,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=105"></script>
+  <script src="script.js?v=106"></script>
 </body>
 </html>
 

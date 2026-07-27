@@ -44,9 +44,15 @@ let currentActiveView = "dashboard";
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const weekdays = days.slice(0, 5);
 const scheduleDayOptions = ["Weekday", ...days];
+const graduateTutorRatePackages = [
+  { packageName: "5 Hours", amounts: { "Elem/JHS": 420, SHS: 480, College: 540 } },
+  { packageName: "10 Hours", amounts: { "Elem/JHS": 360, SHS: 420, College: 480 } },
+  { packageName: "15 Hours", amounts: { "Elem/JHS": 300, SHS: 340, College: 380 } }
+];
+const graduateTutorRateModes = ["Virtual", "F2F"];
 const studyBuddyRatePackages = [
   { packageName: "Pair (SB)", amount: 400 },
-  { packageName: "Trio (SB)", amount: 450 },
+  { packageName: "Trio (SB)", amount: 400 },
   { packageName: "Group (4)", amount: 450 },
   { packageName: "Group (5-9)", amount: 500 },
   { packageName: "Group (10+)", amount: 550 }
@@ -780,21 +786,21 @@ const defaultState = {
     { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "Virtual", packageName: "5 Hours", amount: 420 },
     { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "Virtual", packageName: "5 Hours", amount: 480 },
     { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "Virtual", packageName: "5 Hours", amount: 540 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "5 Hours", amount: 480 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "5 Hours", amount: 540 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "5 Hours", amount: 600 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "5 Hours", amount: 420 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "5 Hours", amount: 480 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "5 Hours", amount: 540 },
     { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "Virtual", packageName: "10 Hours", amount: 360 },
     { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "Virtual", packageName: "10 Hours", amount: 420 },
     { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "Virtual", packageName: "10 Hours", amount: 480 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "10 Hours", amount: 420 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "10 Hours", amount: 480 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "10 Hours", amount: 510 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "10 Hours", amount: 360 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "10 Hours", amount: 420 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "10 Hours", amount: 480 },
     { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "Virtual", packageName: "15 Hours", amount: 300 },
     { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "Virtual", packageName: "15 Hours", amount: 340 },
     { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "Virtual", packageName: "15 Hours", amount: 380 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "15 Hours", amount: 340 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "15 Hours", amount: 380 },
-    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "15 Hours", amount: 420 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "Elem/JHS", mode: "F2F", packageName: "15 Hours", amount: 300 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "SHS", mode: "F2F", packageName: "15 Hours", amount: 340 },
+    { id: uid(), tutor: "Graduate Tutor", classType: "College", mode: "F2F", packageName: "15 Hours", amount: 380 },
     { id: uid(), tutor: "Group Class", classType: "Group", mode: "Virtual", packageName: "Group 3 Students", amount: 350 },
     { id: uid(), tutor: "Group Class", classType: "Group", mode: "Virtual", packageName: "Group 4 Students", amount: 400 },
     { id: uid(), tutor: "Group Class", classType: "Group", mode: "Virtual", packageName: "Group 5-9 Students", amount: 450 },
@@ -998,6 +1004,37 @@ function ensureStudyBuddyRates(targetState) {
     });
   });
 }
+
+function ensureGraduateTutorRates(targetState) {
+  targetState.rates ||= [];
+  targetState.rates = targetState.rates.filter((rate) => rate.tutor === CURRENT_RATE_TUTOR);
+  graduateTutorRatePackages.forEach((ratePackage) => {
+    Object.entries(ratePackage.amounts).forEach(([classType, amount]) => {
+      graduateTutorRateModes.forEach((mode) => {
+        const existing = targetState.rates.find((rate) => (
+          rate.tutor === CURRENT_RATE_TUTOR &&
+          rate.classType === classType &&
+          sameMode(rate.mode, mode) &&
+          rate.packageName === ratePackage.packageName
+        ));
+        if (existing) {
+          existing.amount = amount;
+          existing.mode = mode;
+        } else {
+          targetState.rates.push({
+            id: uid(),
+            tutor: CURRENT_RATE_TUTOR,
+            classType,
+            mode,
+            packageName: ratePackage.packageName,
+            amount
+          });
+        }
+      });
+    });
+  });
+}
+
 function migrateState(inputState) {
   const next = inputState || buildInitialState();
   const imported = window.salarySheetWorkbookData;
@@ -1007,6 +1044,7 @@ function migrateState(inputState) {
 
   next.settings ||= structuredClone(defaultState.settings);
   next.settings.modes = ["Virtual", "F2F", "Hybrid"];
+  ensureGraduateTutorRates(next);
   ensureStudyBuddyRates(next);
   next.settings.students = uniqueNormalizedNames(
   (next.settings.students || [])
@@ -1735,7 +1773,7 @@ function salaryGradeProjection(amount) {
 
 function shortSalaryGradeLabel(grade) {
   const match = String(grade?.label || "").match(/SG\s+\d+/i);
-  return match ? `Grade ${match[0].replace(/\D+/g, "")}` : grade?.label || "No Grade";
+  return match ? match[0].toUpperCase() : grade?.label || "No SG";
 }
 
 function topValues(values, count = 3) {
@@ -1827,7 +1865,7 @@ function renderDashboard() {
     </div>
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>Based on ${currentMonthLoggedDays} logged days · ${projectionGrade.base ? `${money(projectionGrade.base)} baseline` : "Below Grade 1 baseline"}</span>
+      <span>Based on ${currentMonthLoggedDays} logged days · ${projectionGrade.base ? `${money(projectionGrade.base)} baseline` : "Below SG 1 baseline"}</span>
     </div>
   </article>`;
 
