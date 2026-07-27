@@ -801,6 +801,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .bar {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -823,7 +824,7 @@ tbody tr.individual-session td:first-child {
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: flex-end;
-  overflow: hidden;
+  overflow: visible;
   min-height: 6px;
   border-radius: 5px 5px 0 0;
 }
@@ -1032,6 +1033,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .week-bar {
+  position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   align-items: end;
@@ -1043,7 +1045,7 @@ tbody tr.individual-session td:first-child {
 .week-fill {
   position: relative;
   display: block;
-  overflow: hidden;
+  overflow: visible;
   min-height: 3px;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #2a7e74, #69a297);
@@ -1051,32 +1053,48 @@ tbody tr.individual-session td:first-child {
 
 .bar-tooltip {
   position: absolute;
-  inset: 50% 4px auto;
-  z-index: 2;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  z-index: 8;
   display: grid;
-  gap: 1px;
-  padding: 3px 4px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #172126;
-  font-size: 9px;
+  gap: 2px;
+  min-width: 76px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: #172126;
+  color: white;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.1;
   text-align: center;
   opacity: 0;
-  transform: translateY(-50%);
-  transition: opacity 0.16s ease;
+  transform: translateX(-50%) translateY(3px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
   pointer-events: none;
+  white-space: nowrap;
 }
 
 .bar-tooltip small {
-  color: var(--muted);
-  font-size: 8px;
+  color: #b8c7d2;
+  font-size: 9px;
+}
+
+.bar-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 5px solid transparent;
+  border-top-color: #172126;
+  transform: translateX(-50%);
 }
 
 .bar:hover .bar-tooltip,
-.week-bar:hover .bar-tooltip {
+.bar:focus .bar-tooltip,
+.week-bar:hover .bar-tooltip,
+.week-bar:focus .bar-tooltip {
   opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .week-bar.day-rank-1 .week-fill {
@@ -1177,6 +1195,29 @@ tbody tr.individual-session td:first-child {
 .salary-grade-chip span {
   font-size: 10.5px;
   line-height: 1.25;
+}
+
+.salary-grade-next {
+  grid-column: 2;
+}
+
+.projection-grade-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  padding: 0 4px;
+}
+
+.projection-grade-summary span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.projection-grade-summary strong {
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .status-stack {

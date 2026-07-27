@@ -889,6 +889,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupForms();
   setupActions();
+  removeLapsedOneTimeSchedules();
   hydrateControls();
   render();
   migrateLegacyRecordAttachments();
@@ -1734,20 +1735,88 @@ function nextMonthWindow(baseDate = new Date()) {
   };
 }
 
+function isOneTimeSchedule(item) {
+  return /^one-time$/i.test(item?.frequency || "") || /^one-time$/i.test(item?.status || "");
+}
+
+function scheduleStatusAllowsProjection(item) {
+  const status = String(item?.status || "Active").toLowerCase();
+  return status === "active" || status === "one-time";
+}
+
+function scheduleMinutes(timeText) {
+  return Math.round(timeToDecimal(timeText) * 60);
+}
+
+function scheduleOccurrenceThisWeek(item, baseDate = new Date()) {
+  if (!item?.day || !item.start || !item.end) return null;
+  const itemDayIndex = days.indexOf(item.day);
+  const todayIndex = days.indexOf(dayName(localIsoDate(baseDate)));
+  if (itemDayIndex < 0 || todayIndex < 0) return null;
+
+  const startOfToday = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const start = new Date(startOfToday);
+  start.setDate(startOfToday.getDate() + (itemDayIndex - todayIndex));
+
+  const startMinutes = scheduleMinutes(item.start);
+  let endMinutes = scheduleMinutes(item.end);
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+
+  start.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
+  const end = new Date(start);
+  end.setHours(0, 0, 0, 0);
+  end.setMinutes(endMinutes);
+
+  return {
+    start,
+    end,
+    date: localIsoDate(start)
+  };
+}
+
+function oneTimeScheduleIsLapsed(item, baseDate = new Date()) {
+  if (!isOneTimeSchedule(item)) return false;
+  const occurrence = scheduleOccurrenceThisWeek(item, baseDate);
+  return occurrence ? occurrence.end < baseDate : false;
+}
+
+function removeLapsedOneTimeSchedules(baseDate = new Date()) {
+  const schedules = state.schedules || [];
+  const nextSchedules = schedules.filter((item) => !oneTimeScheduleIsLapsed(item, baseDate));
+  if (nextSchedules.length === schedules.length) return;
+  state.schedules = nextSchedules;
+  saveState();
+}
+
 function scheduledProjectionForMonth(range, hourlyRate = 300) {
   const scheduleItems = (state.schedules || [])
-    .filter((item) => String(item.status || "Active").toLowerCase() === "active")
+    .filter(scheduleStatusAllowsProjection)
     .filter((item) => item.start && item.end);
   const start = isoToLocalDate(range.start);
+  let weeklyHours = 0;
+  let oneTimeHours = 0;
   const hours = scheduleItems.reduce((total, item) => {
+    const duration = computeHours(item.start, item.end);
+    if (isOneTimeSchedule(item)) {
+      const occurrence = scheduleOccurrenceThisWeek(item);
+      if (occurrence && occurrence.end >= new Date() && occurrence.date >= range.start && occurrence.date <= range.end) {
+        oneTimeHours += duration;
+        return total + duration;
+      }
+      return total;
+    }
+
+    weeklyHours += duration;
     let occurrences = 0;
     for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
       if (dayName(localIsoDate(date)) === item.day) occurrences += 1;
     }
-    return total + occurrences * computeHours(item.start, item.end);
+    return total + occurrences * duration;
   }, 0);
   return {
     hours,
+    weeklyHours,
+    oneTimeHours,
     pay: hours * hourlyRate,
     rate: hourlyRate
   };
@@ -1864,7 +1933,8 @@ function renderDashboard() {
     const monthClass = isCurrentMonth ? "current-month" : topHistoricalMonthPay > 0 && row.pay === topHistoricalMonthPay ? "top-month" : "";
     const grade = salaryGradeProjection(row.pay);
     const showValue = topMonthPay > 0 && row.pay === topMonthPay;
-    return `<div class="bar ${monthClass}">
+    const tooltip = `${money(row.pay)} / ${number(row.hours)} hrs`;
+    return `<div class="bar ${monthClass}" tabindex="0" title="${escapeAttr(tooltip)}" aria-label="${escapeAttr(`${monthName(row.month)}: ${tooltip}`)}">
       <span class="bar-value">${showValue ? moneyShort(row.pay) : ""}</span>
       <span class="bar-stack" style="height:${totalHeight}%">
         ${projectedExtra ? `<span class="bar-projection-fill" style="height:${projectionShare}%"></span>` : ""}
@@ -1883,7 +1953,8 @@ function renderDashboard() {
     const todayClass = row.date === recentRange.end ? " today-bar" : "";
     const rankClass = rankClassForValue(row.pay, recentRankValues, "day-rank");
     const showValue = rankClass === "day-rank-1";
-    return `<div class="week-bar ${rankClass}${todayClass}">
+    const tooltip = `${money(row.pay)} / ${number(row.hours)} hrs`;
+    return `<div class="week-bar ${rankClass}${todayClass}" tabindex="0" title="${escapeAttr(tooltip)}" aria-label="${escapeAttr(`${formatDate(row.date)}: ${tooltip}`)}">
       <span class="week-value">${showValue && row.pay ? moneyShort(row.pay) : ""}</span>
       <span class="week-fill" style="height:${height}%"><span class="bar-tooltip">${escapeHtml(money(row.pay))}<small>${number(row.hours)} hrs</small></span></span>
       <span class="week-day">${escapeHtml(dayName(row.date).slice(0, 3))}</span>
@@ -1899,6 +1970,25 @@ function renderDashboard() {
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
       <span>Current: ${currentMonthLoggedDays} logged days · Next: ${number(nextMonthProjection.hours)} hrs @ PHP 300/hr</span>
+    </div>
+  </article>`;
+
+  const oneTimeProjectionNote = nextMonthProjection.oneTimeHours
+    ? ` + ${number(nextMonthProjection.oneTimeHours)} one-time hrs`
+    : "";
+  $("#projectionMetrics").innerHTML = `<article class="projection-card">
+    <div class="projection-lines">
+      <div><span>${escapeHtml(currentMonthLabel)}</span><strong>${money(monthlyProjection)}</strong></div>
+      <div><span>${escapeHtml(monthName(nextMonthRange.month))}</span><strong>${money(nextMonthProjection.pay)}</strong></div>
+    </div>
+    <div class="salary-grade-chip">
+      <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
+      <span>Current: ${currentMonthLoggedDays} logged days</span>
+      <span class="salary-grade-next">Next: ${number(nextMonthProjection.weeklyHours)} hrs/week${escapeHtml(oneTimeProjectionNote)}</span>
+    </div>
+    <div class="projection-grade-summary">
+      <span>Salary Grade Step</span><strong>${escapeHtml(projectionGrade.label)}</strong>
+      <span>Base Pay Level</span><strong>${money(projectionGrade.base)}</strong>
     </div>
   </article>`;
 
