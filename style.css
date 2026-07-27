@@ -598,7 +598,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .dashboard-side {
@@ -632,7 +632,8 @@ textarea:focus {
 }
 
 .recent-grid .metric strong {
-  font-size: 21px;
+  font-size: 19px;
+  white-space: nowrap;
 }
 
 .table-wrap {
@@ -799,6 +800,50 @@ tbody tr.individual-session td:first-child {
   background: linear-gradient(180deg, #2a7e74, #69a297);
 }
 
+.bar-stack {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  min-height: 6px;
+  border-radius: 5px 5px 0 0;
+}
+
+.bar-stack .bar-fill,
+.bar-projection-fill {
+  display: block;
+  width: 100%;
+  min-height: 0;
+}
+
+.bar-stack .bar-fill {
+  border-radius: 0;
+}
+
+.bar:not(.current-month) .bar-stack .bar-fill,
+.bar-stack .bar-fill:first-child {
+  border-radius: 5px 5px 0 0;
+}
+
+.bar-projection-fill {
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(208, 144, 23, 0.24) 0,
+    rgba(208, 144, 23, 0.24) 5px,
+    rgba(242, 189, 85, 0.58) 5px,
+    rgba(242, 189, 85, 0.58) 10px
+  );
+}
+
+.bar.current-month .bar-fill {
+  background: linear-gradient(180deg, var(--blue), #4a8dff);
+}
+
+.bar.top-month .bar-fill {
+  background: linear-gradient(180deg, #d09017, #f2bd55);
+}
+
 .bar.month-rank-1 .bar-fill,
 .bar.peak-month .bar-fill {
   background: linear-gradient(180deg, #00d7e6, #007fc7);
@@ -838,6 +883,20 @@ tbody tr.individual-session td:first-child {
   font-weight: 700;
 }
 
+.bar.current-month .bar-label,
+.bar.current-month .bar-value,
+.bar.current-month .bar-grade {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.bar.top-month .bar-label,
+.bar.top-month .bar-value,
+.bar.top-month .bar-grade {
+  color: #9a6800;
+  font-weight: 700;
+}
+
 .bar-label,
 .bar-value,
 .bar-grade {
@@ -868,6 +927,54 @@ tbody tr.individual-session td:first-child {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.38fr);
   gap: 12px;
   padding: 0 18px 14px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.chart-legend em {
+  width: 100%;
+  color: #5f6d76;
+  font-size: 10px;
+  font-style: normal;
+  text-align: right;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legend-history {
+  background: #2a7e74;
+}
+
+.legend-current {
+  background: var(--blue);
+}
+
+.legend-top {
+  background: var(--gold);
+}
+
+.legend-projection {
+  background: repeating-linear-gradient(135deg, rgba(208, 144, 23, 0.32) 0 4px, rgba(242, 189, 85, 0.7) 4px 8px);
 }
 
 .mini-panel {
@@ -933,6 +1040,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .week-bar.today-bar .week-fill {
+  background: linear-gradient(180deg, var(--blue), #4a8dff);
   box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.12);
 }
 
@@ -976,6 +1084,26 @@ tbody tr.individual-session td:first-child {
   color: var(--muted);
 }
 
+.projection-lines {
+  display: grid;
+  gap: 8px;
+}
+
+.projection-lines div {
+  display: grid;
+  gap: 3px;
+}
+
+.projection-lines span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.projection-lines strong {
+  font-size: 22px;
+}
+
 .salary-grade-chip {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -998,42 +1126,47 @@ tbody tr.individual-session td:first-child {
 
 .status-stack {
   display: grid;
-  gap: 12px;
-  padding: 18px;
-}
-
-.status-row {
-  display: grid;
-  grid-template-columns: 130px minmax(0, 1fr) 86px;
-  align-items: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
+  padding: 14px;
 }
 
-.track {
-  height: 10px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eef1f3;
+.status-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent);
+  border-radius: 8px;
+  background: #ffffff;
 }
 
-.track span {
+.status-card span {
   display: block;
-  height: 100%;
-  background: var(--accent);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.status-row.status-claimed .track span {
-  background: var(--teal);
+.status-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.15;
 }
 
-.status-row.status-pending .track span {
-  background: #7f91a8;
+.status-card.status-claimed {
+  border-left-color: var(--teal);
+  background: #f0f8f6;
 }
 
-.status-row.status-for-claiming .track span {
-  background: var(--accent);
+.status-card.status-pending {
+  border-left-color: #7f91a8;
+  background: #f4f7fb;
+}
+
+.status-card.status-for-claiming {
+  border-left-color: var(--blue);
+  background: #eef5fc;
 }
 
 .week-scroll {
@@ -2114,6 +2247,18 @@ tbody tr.individual-session td:first-child {
   .metric {
     min-height: 76px;
     padding: 12px 12px 12px 14px;
+  }
+
+  .chart-legend {
+    justify-content: flex-start;
+  }
+
+  .chart-legend em {
+    text-align: left;
+  }
+
+  .status-stack {
+    grid-template-columns: 1fr;
   }
 
   .metric span {

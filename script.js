@@ -1735,7 +1735,7 @@ function salaryGradeProjection(amount) {
 
 function shortSalaryGradeLabel(grade) {
   const match = String(grade?.label || "").match(/SG\s+\d+/i);
-  return match ? match[0].toUpperCase() : grade?.label || "No SG";
+  return match ? `Grade ${match[0].replace(/\D+/g, "")}` : grade?.label || "No Grade";
 }
 
 function topValues(values, count = 3) {
@@ -1758,7 +1758,9 @@ function renderDashboard() {
   const recentDays = recentWeekDailySummary(recentRows, recentRange);
   const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
   const currentMonthRange = currentMonthWindow();
+  const currentMonthKey = currentMonthRange.today.slice(0, 7);
   const monthToDateTotals = summarize(currentMonthToDateSessions(currentMonthRange));
+  const currentMonthLoggedDays = new Set(currentMonthToDateSessions(currentMonthRange).map((row) => row.date)).size || 0;
   const monthDailyPace = monthToDateTotals.pay / Math.max(1, currentMonthRange.elapsedDays);
   const monthlyProjection = Math.max(monthToDateTotals.pay, monthDailyPace * currentMonthRange.daysInMonth);
   const projectionGrade = salaryGradeProjection(monthlyProjection);
@@ -1768,6 +1770,7 @@ function renderDashboard() {
   const currentUnclaimed = currentUnclaimedTotal();
   const peak = peakDay(rows);
   const monthLabel = $("#monthFilter").value ? monthName($("#monthFilter").value) : "selected month";
+  const currentMonthLabel = monthName(currentMonthKey);
   const activeDays = new Set(rows.map((row) => row.date)).size || 0;
   const avgHours = activeDays ? totals.hours / activeDays : 0;
   const avgEarnings = activeDays ? totals.pay / activeDays : 0;
@@ -1780,13 +1783,26 @@ function renderDashboard() {
   ].join("");
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
-  const max = Math.max(1, ...months.map((row) => row.pay));
-  const monthRankValues = topValues(months.map((row) => row.pay), 3);
+  const topHistoricalMonthPay = Math.max(0, ...months.filter((row) => row.month !== currentMonthKey).map((row) => row.pay));
+  const max = Math.max(1, ...months.map((row) => row.pay), monthlyProjection);
   $("#monthlyChart").innerHTML = months.map((row) => {
-    const height = Math.max(4, (row.pay / max) * 84);
-    const rankClass = rankClassForValue(row.pay, monthRankValues, "month-rank");
+    const isCurrentMonth = row.month === currentMonthKey;
+    const projectedExtra = isCurrentMonth ? Math.max(0, monthlyProjection - row.pay) : 0;
+    const actualHeight = Math.max(4, (row.pay / max) * 84);
+    const totalHeight = Math.max(4, ((row.pay + projectedExtra) / max) * 84);
+    const projectionShare = projectedExtra ? Math.max(5, (projectedExtra / (row.pay + projectedExtra)) * 100) : 0;
+    const actualShare = Math.max(0, 100 - projectionShare);
+    const monthClass = isCurrentMonth ? "current-month" : topHistoricalMonthPay > 0 && row.pay === topHistoricalMonthPay ? "top-month" : "";
     const grade = salaryGradeProjection(row.pay);
-    return `<div class="bar ${rankClass}"><span class="bar-value">${moneyShort(row.pay)}</span><span class="bar-fill" style="height:${height}%"></span><span class="bar-grade">${escapeHtml(shortSalaryGradeLabel(grade))}</span><span class="bar-label">${escapeHtml(monthName(row.month, true))}</span></div>`;
+    return `<div class="bar ${monthClass}">
+      <span class="bar-value">${moneyShort(row.pay)}</span>
+      <span class="bar-stack" style="height:${totalHeight}%">
+        ${projectedExtra ? `<span class="bar-projection-fill" style="height:${projectionShare}%"></span>` : ""}
+        <span class="bar-fill" style="height:${projectedExtra ? actualShare : 100}%"></span>
+      </span>
+      <span class="bar-grade">${escapeHtml(shortSalaryGradeLabel(grade))}</span>
+      <span class="bar-label">${escapeHtml(monthName(row.month, true))}</span>
+    </div>`;
   }).join("") || `<p class="empty">No monthly data yet.</p>`;
 
   $("#recentWeekRange").textContent = `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`;
@@ -1804,14 +1820,19 @@ function renderDashboard() {
   }).join("");
 
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
-    <span>${escapeHtml(monthName(currentMonthRange.today.slice(0, 7), true))}</span>
-    <strong>${money(monthlyProjection)}</strong>
+    <span>${escapeHtml(currentMonthLabel)}</span>
+    <div class="projection-lines">
+      <div><span>Earned so far</span><strong>${money(monthToDateTotals.pay)}</strong></div>
+      <div><span>Projected total</span><strong>${money(monthlyProjection)}</strong></div>
+    </div>
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>${projectionGrade.base ? `2026 base ${money(projectionGrade.base)}` : "Below SG 1"}</span>
+      <span>Based on ${currentMonthLoggedDays} logged days · ${projectionGrade.base ? `${money(projectionGrade.base)} baseline` : "Below Grade 1 baseline"}</span>
     </div>
   </article>`;
 
+  const averageTitle = $("#averagePanelTitle");
+  if (averageTitle) averageTitle.textContent = `${monthName(currentMonthKey).replace(/\s+\d{4}$/, "")} Average`;
   $("#averageMetrics").innerHTML = [
     metric("Avg Hours / Day", number(avgHours), activeDays ? `${activeDays} logged days` : "No logged days", "unclaimed"),
     metric("Avg Earnings / Day", money(avgEarnings), monthLabel, "earnings")
@@ -1820,7 +1841,7 @@ function renderDashboard() {
   $("#recentSevenMetrics").innerHTML = [
     metric("7-Day Earnings", money(recentTotals.pay), `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`, "earnings"),
     metric("7-Day Hours", number(recentTotals.hours), `${recentTotals.sessions} sessions`, "unclaimed"),
-    metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "earnings today", "total")
+    metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "earnings today", "unclaimed")
   ].join("");
 
   const statusRows = [
@@ -1828,9 +1849,8 @@ function renderDashboard() {
     ["For Claiming", forClaiming],
     ["Pending", pending]
   ];
-  const statusMax = Math.max(1, ...statusRows.map((row) => row[1]));
   $("#statusStack").innerHTML = statusRows.map(([label, value]) => (
-    `<div class="status-row status-${statusClass(label)}"><strong>${escapeHtml(label)}</strong><div class="track"><span style="width:${(value / statusMax) * 100}%"></span></div><span>${money(value)}</span></div>`
+    `<article class="status-card status-${statusClass(label)}"><span>${escapeHtml(label)}</span><strong>${money(value)}</strong></article>`
   )).join("");
 
   const rankedDays = dailySummary(rows)

@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Career Records</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=46">
+  <link rel="stylesheet" href="style.css?v=47">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -87,12 +87,19 @@
         <section class="panel">
           <div class="panel-head">
             <h2>Monthly Earnings</h2>
+            <div class="chart-legend" aria-label="Monthly earnings legend">
+              <span><i class="legend-swatch legend-history"></i>Historical</span>
+              <span><i class="legend-swatch legend-current"></i>Current month</span>
+              <span><i class="legend-swatch legend-top"></i>Top month</span>
+              <span><i class="legend-swatch legend-projection"></i>Projected</span>
+              <em>Grade = 2026 salary grade</em>
+            </div>
           </div>
           <div class="bar-chart" id="monthlyChart"></div>
           <div class="dashboard-visual-row">
             <section class="mini-panel recent-week-panel">
               <div class="mini-head">
-                <h3>Recent Week</h3>
+                <h3>Daily Earnings</h3>
                 <span id="recentWeekRange"></span>
               </div>
               <div class="week-chart" id="recentWeekChart"></div>
@@ -108,19 +115,19 @@
         <div class="dashboard-side">
           <section class="panel average-panel">
             <div class="panel-head">
-              <h2>Daily Average</h2>
+              <h2 id="averagePanelTitle">Monthly Average</h2>
             </div>
             <div class="average-grid" id="averageMetrics"></div>
           </section>
           <section class="panel recent-panel">
             <div class="panel-head">
-              <h2>Recent Week</h2>
+              <h2>7-Day Summary</h2>
             </div>
             <div class="recent-grid" id="recentSevenMetrics"></div>
           </section>
           <section class="panel status-panel">
             <div class="panel-head">
-              <h2>Status Balance</h2>
+              <h2>Claiming Status</h2>
             </div>
             <div class="status-stack" id="statusStack"></div>
           </section>
@@ -597,7 +604,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=104"></script>
+  <script src="script.js?v=105"></script>
 </body>
 </html>
 
