@@ -105,19 +105,36 @@ button {
   height: 44px;
   display: grid;
   place-items: center;
-  background: #ecf6f1;
+  background: #eef9f7;
   border-radius: 8px;
-  color: var(--accent);
+  color: var(--blue);
 }
 
 .brand-mark svg {
   width: 32px;
   height: 32px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+}
+
+.jlcr-logo rect {
+  fill: #ffffff;
+  stroke: rgba(0, 179, 159, 0.44);
+  stroke-width: 1.4;
+}
+
+.jlcr-logo text {
+  font-family: Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0;
+  stroke: none;
+}
+
+.jlcr-logo text:first-of-type {
+  fill: var(--blue);
+}
+
+.jlcr-logo text:last-of-type {
+  fill: var(--teal);
 }
 
 .nav {
@@ -632,7 +649,7 @@ textarea:focus {
 }
 
 .recent-grid .metric strong {
-  font-size: 19px;
+  font-size: 16px;
   white-space: nowrap;
 }
 
@@ -802,6 +819,7 @@ tbody tr.individual-session td:first-child {
 
 .bar-stack {
   display: flex;
+  position: relative;
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: flex-end;
@@ -909,6 +927,7 @@ tbody tr.individual-session td:first-child {
 
 .bar-value {
   margin-bottom: 1px;
+  min-height: 10px;
 }
 
 .bar-grade {
@@ -1022,9 +1041,42 @@ tbody tr.individual-session td:first-child {
 }
 
 .week-fill {
+  position: relative;
+  display: block;
+  overflow: hidden;
   min-height: 3px;
   border-radius: 5px 5px 0 0;
   background: linear-gradient(180deg, #2a7e74, #69a297);
+}
+
+.bar-tooltip {
+  position: absolute;
+  inset: 50% 4px auto;
+  z-index: 2;
+  display: grid;
+  gap: 1px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #172126;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.16s ease;
+  pointer-events: none;
+}
+
+.bar-tooltip small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.bar:hover .bar-tooltip,
+.week-bar:hover .bar-tooltip {
+  opacity: 1;
 }
 
 .week-bar.day-rank-1 .week-fill {
@@ -1065,7 +1117,7 @@ tbody tr.individual-session td:first-child {
 .projection-card {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 7px;
 }
 
 .projection-card span {
@@ -1086,12 +1138,14 @@ tbody tr.individual-session td:first-child {
 
 .projection-lines {
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .projection-lines div {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .projection-lines span {
@@ -1101,7 +1155,7 @@ tbody tr.individual-session td:first-child {
 }
 
 .projection-lines strong {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .salary-grade-chip {
@@ -1391,16 +1445,16 @@ tbody tr.individual-session td:first-child {
 
 .package-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  padding: 10px;
 }
 
 .package-card {
   display: grid;
-  gap: 10px;
-  min-height: 122px;
-  padding: 12px;
+  gap: 8px;
+  min-height: 104px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-left: 6px solid var(--line);
   border-radius: 7px;
@@ -1921,7 +1975,7 @@ tbody tr.individual-session td:first-child {
   align-items: center;
   gap: 8px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .package-select input {
@@ -1937,9 +1991,9 @@ tbody tr.individual-session td:first-child {
 
 .package-stats {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .claim-package-head td {

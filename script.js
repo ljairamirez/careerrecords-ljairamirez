@@ -1724,6 +1724,35 @@ function currentMonthToDateSessions(range = currentMonthWindow()) {
     .filter((session) => session.date >= range.start && session.date <= range.today);
 }
 
+function nextMonthWindow(baseDate = new Date()) {
+  const startDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 1);
+  const endDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 2, 0);
+  return {
+    start: localIsoDate(startDate),
+    end: localIsoDate(endDate),
+    month: localIsoDate(startDate).slice(0, 7)
+  };
+}
+
+function scheduledProjectionForMonth(range, hourlyRate = 300) {
+  const scheduleItems = (state.schedules || [])
+    .filter((item) => String(item.status || "Active").toLowerCase() === "active")
+    .filter((item) => item.start && item.end);
+  const start = isoToLocalDate(range.start);
+  const hours = scheduleItems.reduce((total, item) => {
+    let occurrences = 0;
+    for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
+      if (dayName(localIsoDate(date)) === item.day) occurrences += 1;
+    }
+    return total + occurrences * computeHours(item.start, item.end);
+  }, 0);
+  return {
+    hours,
+    pay: hours * hourlyRate,
+    rate: hourlyRate
+  };
+}
+
 function recentWeekDailySummary(rows, range) {
   const byDate = groupBy(rows, (session) => session.date);
   const start = isoToLocalDate(range.start);
@@ -1797,6 +1826,8 @@ function renderDashboard() {
   const recentDayMax = Math.max(1, ...recentDays.map((row) => row.pay));
   const currentMonthRange = currentMonthWindow();
   const currentMonthKey = currentMonthRange.today.slice(0, 7);
+  const nextMonthRange = nextMonthWindow();
+  const nextMonthProjection = scheduledProjectionForMonth(nextMonthRange, 300);
   const monthToDateTotals = summarize(currentMonthToDateSessions(currentMonthRange));
   const currentMonthLoggedDays = new Set(currentMonthToDateSessions(currentMonthRange).map((row) => row.date)).size || 0;
   const monthDailyPace = monthToDateTotals.pay / Math.max(1, currentMonthRange.elapsedDays);
@@ -1821,22 +1852,24 @@ function renderDashboard() {
   ].join("");
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
+  const topMonthPay = Math.max(0, ...months.map((row) => row.pay));
   const topHistoricalMonthPay = Math.max(0, ...months.filter((row) => row.month !== currentMonthKey).map((row) => row.pay));
   const max = Math.max(1, ...months.map((row) => row.pay), monthlyProjection);
   $("#monthlyChart").innerHTML = months.map((row) => {
     const isCurrentMonth = row.month === currentMonthKey;
     const projectedExtra = isCurrentMonth ? Math.max(0, monthlyProjection - row.pay) : 0;
-    const actualHeight = Math.max(4, (row.pay / max) * 84);
     const totalHeight = Math.max(4, ((row.pay + projectedExtra) / max) * 84);
     const projectionShare = projectedExtra ? Math.max(5, (projectedExtra / (row.pay + projectedExtra)) * 100) : 0;
     const actualShare = Math.max(0, 100 - projectionShare);
     const monthClass = isCurrentMonth ? "current-month" : topHistoricalMonthPay > 0 && row.pay === topHistoricalMonthPay ? "top-month" : "";
     const grade = salaryGradeProjection(row.pay);
+    const showValue = topMonthPay > 0 && row.pay === topMonthPay;
     return `<div class="bar ${monthClass}">
-      <span class="bar-value">${moneyShort(row.pay)}</span>
+      <span class="bar-value">${showValue ? moneyShort(row.pay) : ""}</span>
       <span class="bar-stack" style="height:${totalHeight}%">
         ${projectedExtra ? `<span class="bar-projection-fill" style="height:${projectionShare}%"></span>` : ""}
         <span class="bar-fill" style="height:${projectedExtra ? actualShare : 100}%"></span>
+        <span class="bar-tooltip">${escapeHtml(money(row.pay))}<small>${number(row.hours)} hrs</small></span>
       </span>
       <span class="bar-grade">${escapeHtml(shortSalaryGradeLabel(grade))}</span>
       <span class="bar-label">${escapeHtml(monthName(row.month, true))}</span>
@@ -1849,23 +1882,23 @@ function renderDashboard() {
     const height = Math.max(row.pay ? 8 : 3, (row.pay / recentDayMax) * 88);
     const todayClass = row.date === recentRange.end ? " today-bar" : "";
     const rankClass = rankClassForValue(row.pay, recentRankValues, "day-rank");
+    const showValue = rankClass === "day-rank-1";
     return `<div class="week-bar ${rankClass}${todayClass}">
-      <span class="week-value">${row.pay ? moneyShort(row.pay) : "PHP 0"}</span>
-      <span class="week-fill" style="height:${height}%"></span>
+      <span class="week-value">${showValue && row.pay ? moneyShort(row.pay) : ""}</span>
+      <span class="week-fill" style="height:${height}%"><span class="bar-tooltip">${escapeHtml(money(row.pay))}<small>${number(row.hours)} hrs</small></span></span>
       <span class="week-day">${escapeHtml(dayName(row.date).slice(0, 3))}</span>
       <span class="week-date">${escapeHtml(formatShortDate(row.date))}</span>
     </div>`;
   }).join("");
 
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
-    <span>${escapeHtml(currentMonthLabel)}</span>
     <div class="projection-lines">
-      <div><span>Earned so far</span><strong>${money(monthToDateTotals.pay)}</strong></div>
-      <div><span>Projected total</span><strong>${money(monthlyProjection)}</strong></div>
+      <div><span>${escapeHtml(currentMonthLabel)}</span><strong>${money(monthlyProjection)}</strong></div>
+      <div><span>${escapeHtml(monthName(nextMonthRange.month))}</span><strong>${money(nextMonthProjection.pay)}</strong></div>
     </div>
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>Based on ${currentMonthLoggedDays} logged days · ${projectionGrade.base ? `${money(projectionGrade.base)} baseline` : "Below SG 1 baseline"}</span>
+      <span>Current: ${currentMonthLoggedDays} logged days · Next: ${number(nextMonthProjection.hours)} hrs @ PHP 300/hr</span>
     </div>
   </article>`;
 
@@ -1873,13 +1906,13 @@ function renderDashboard() {
   if (averageTitle) averageTitle.textContent = `${monthName(currentMonthKey).replace(/\s+\d{4}$/, "")} Average`;
   $("#averageMetrics").innerHTML = [
     metric("Avg Hours / Day", number(avgHours), activeDays ? `${activeDays} logged days` : "No logged days", "unclaimed"),
-    metric("Avg Earnings / Day", money(avgEarnings), monthLabel, "earnings")
+    metric("Avg Earnings / Day", money(avgEarnings), "", "earnings")
   ].join("");
 
   $("#recentSevenMetrics").innerHTML = [
     metric("7-Day Earnings", money(recentTotals.pay), `${formatShortDate(recentRange.start)} - ${formatShortDate(recentRange.end)}`, "earnings"),
     metric("7-Day Hours", number(recentTotals.hours), `${recentTotals.sessions} sessions`, "unclaimed"),
-    metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "earnings today", "unclaimed")
+    metric("Today", money(sum(recentRows.filter((session) => session.date === recentRange.end), totalPay)), "", "unclaimed")
   ].join("");
 
   const statusRows = [
@@ -1975,7 +2008,7 @@ function personalPackageCardHtml(pkg) {
   const closed = pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
   return `<article class="package-card personal-package-card ${closed ? "personal-closed" : "personal-open"}">
     <label class="package-select"><input type="checkbox" class="personal-package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
-    <div class="package-stats"><span>${pkg.sessions.length} logs</span><span>${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
+    <div class="package-stats"><span>${pkg.sessions.length} logs · ${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
     <span class="pill ${closed ? "claimed" : "pending"}">${closed ? "Closed" : "Open"}</span>
   </article>`;
 }
@@ -2135,8 +2168,7 @@ function packageCardHtml(pkg) {
   return `<article class="package-card ${packageState.className}${claimAnimation}" data-package-key="${escapeAttr(pkg.key)}">
     <label class="package-select"><input type="checkbox" class="package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
     <div class="package-stats">
-      <span>${pkg.sessions.length} logs</span>
-      <span>${number(pkg.hours)} hrs</span>
+      <span>${pkg.sessions.length} logs · ${number(pkg.hours)} hrs</span>
       <span>${money(pkg.pay)}</span>
     </div>
     <span class="pill ${packageState.pillClass}">${packageState.label}</span>
@@ -4091,7 +4123,7 @@ function formatRecordPeriod(record) {
 
 function metric(label, value, note, tone = "") {
   const toneClass = tone ? ` metric-${escapeAttr(tone)}` : "";
-  return `<article class="metric${toneClass}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(note)}</small></article>`;
+  return `<article class="metric${toneClass}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>${note ? `<small>${escapeHtml(note)}</small>` : ""}</article>`;
 }
 
 function statusPill(status) {

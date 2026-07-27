@@ -10,16 +10,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Career Records</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=48">
+  <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css?v=49">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="#dashboard" aria-label="Career Records dashboard">
       <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 36 36" role="img">
-          <rect x="4" y="4" width="28" height="28" rx="7"></rect>
-          <path d="M11 13h14M11 18h14M11 23h8"></path>
-          <circle cx="25" cy="23" r="3"></circle>
+        <svg viewBox="0 0 36 36" role="img" class="jlcr-logo">
+          <rect x="3" y="3" width="30" height="30" rx="8"></rect>
+          <text x="9" y="16">JL</text>
+          <text x="12" y="27">CR</text>
         </svg>
       </span>
       <span>
@@ -87,10 +89,10 @@
           <div class="panel-head">
             <h2>Monthly Earnings</h2>
             <div class="chart-legend" aria-label="Monthly earnings legend">
-              <span><i class="legend-swatch legend-history"></i>Historical</span>
-              <span><i class="legend-swatch legend-current"></i>Current month</span>
-              <span><i class="legend-swatch legend-top"></i>Top month</span>
-              <span><i class="legend-swatch legend-projection"></i>Projected</span>
+              <span><i class="legend-swatch legend-history"></i>Past</span>
+              <span><i class="legend-swatch legend-current"></i>Current</span>
+              <span><i class="legend-swatch legend-top"></i>Highest</span>
+              <span><i class="legend-swatch legend-projection"></i>Projection</span>
               <em>SG = 2026 salary grade</em>
             </div>
           </div>
@@ -105,7 +107,7 @@
             </section>
             <section class="mini-panel projection-panel">
               <div class="mini-head">
-                <h3>Monthly Projection</h3>
+                <h3>Current-Month Projection</h3>
               </div>
               <div id="projectionMetrics"></div>
             </section>
@@ -600,7 +602,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=106"></script>
+  <script src="script.js?v=107"></script>
 </body>
 </html>
 
