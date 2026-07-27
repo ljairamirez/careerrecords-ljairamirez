@@ -1808,7 +1808,7 @@ function renderDashboard() {
     <strong>${money(monthlyProjection)}</strong>
     <div class="salary-grade-chip">
       <b>${escapeHtml(shortSalaryGradeLabel(projectionGrade))}</b>
-      <span>${projectionGrade.base ? money(projectionGrade.base) : "Below SG 1"}</span>
+      <span>${projectionGrade.base ? `2026 base ${money(projectionGrade.base)}` : "Below SG 1"}</span>
     </div>
   </article>`;
 
