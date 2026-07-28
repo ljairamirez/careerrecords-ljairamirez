@@ -1792,6 +1792,31 @@ function removeLapsedOneTimeSchedules(baseDate = new Date(), persist = true) {
   return true;
 }
 
+function projectionNameKey(value) {
+  return normalizeStudentName(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isPshsMc9Schedule(item) {
+  const key = projectionNameKey(item?.student);
+  return /\bpshs\b/.test(key) && (/\bmc\b/.test(key) || /\bmc9\b/.test(key)) && (/\b(?:9|g9)\b/.test(key) || /\bmc9\b/.test(key));
+}
+
+function scheduleProjectionRate(item, fallbackRate = 300) {
+  const key = projectionNameKey(item?.student);
+  if (/\bupis\b/.test(key) && /\b(?:8|g8)\b/.test(key)) return 450;
+  if (isPshsMc9Schedule(item)) return 550;
+  if ((/\bfabi\b/.test(key) && /\bkarlo\b/.test(key)) || (/\bkarlo\b/.test(key) && /\bfabi\b/.test(key))) return 350;
+  if (/\bfritzie\b/.test(key) || /\bbella\b/.test(key)) return 340;
+  return fallbackRate;
+}
+
+function weekKeyForDate(date) {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const offset = (copy.getDay() + 6) % 7;
+  copy.setDate(copy.getDate() - offset);
+  return localIsoDate(copy);
+}
+
 function scheduledProjectionForMonth(range, hourlyRate = 300) {
   const scheduleItems = (state.schedules || [])
     .filter(scheduleStatusAllowsProjection)
@@ -1799,13 +1824,26 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
   const start = isoToLocalDate(range.start);
   let weeklyHours = 0;
   let oneTimeHours = 0;
+  let pay = 0;
+  const pshsMc9Occurrences = [];
   const hours = scheduleItems.reduce((total, item) => {
     const duration = computeHours(item.start, item.end);
+    const rate = scheduleProjectionRate(item, hourlyRate);
     if (isOneTimeSchedule(item)) {
       const occurrence = scheduleOccurrenceThisWeek(item);
       if (occurrence && occurrence.end >= new Date() && occurrence.date >= range.start && occurrence.date <= range.end) {
         oneTimeHours += duration;
+        pay += duration * rate;
         return total + duration;
+      }
+      return total;
+    }
+
+    if (isPshsMc9Schedule(item)) {
+      for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
+        if (dayName(localIsoDate(date)) === item.day) {
+          pshsMc9Occurrences.push({ date: new Date(date), duration, rate });
+        }
       }
       return total;
     }
@@ -1815,14 +1853,24 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
     for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
       if (dayName(localIsoDate(date)) === item.day) occurrences += 1;
     }
+    pay += occurrences * duration * rate;
     return total + occurrences * duration;
   }, 0);
+  const pshsByWeek = new Map();
+  pshsMc9Occurrences.forEach((occurrence) => {
+    const key = weekKeyForDate(occurrence.date);
+    const current = pshsByWeek.get(key);
+    if (!current || occurrence.duration > current.duration) pshsByWeek.set(key, occurrence);
+  });
+  const pshsHours = sum([...pshsByWeek.values()], (occurrence) => occurrence.duration);
+  pay += sum([...pshsByWeek.values()], (occurrence) => occurrence.duration * occurrence.rate);
+  if (pshsByWeek.size) weeklyHours += Math.max(...[...pshsByWeek.values()].map((occurrence) => occurrence.duration));
   return {
-    hours,
+    hours: hours + pshsHours,
     weeklyHours,
     oneTimeHours,
-    pay: hours * hourlyRate,
-    rate: hourlyRate
+    pay,
+    rate: hours + pshsHours ? pay / (hours + pshsHours) : hourlyRate
   };
 }
 
