@@ -1906,7 +1906,7 @@ function renderDashboard() {
   const monthDailyPace = monthToDateTotals.pay / Math.max(1, currentMonthRange.elapsedDays);
   const monthlyProjection = Math.max(monthToDateTotals.pay, monthDailyPace * currentMonthRange.daysInMonth);
   const projectionGrade = salaryGradeProjection(monthlyProjection);
-  const claimed = sum(allRows.filter(isClaimedStatus), totalPay);
+  const claimed = claimedPayrollTotal();
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
   const pending = sum(allRows.filter((row) => row.status === "Pending"), totalPay);
   const currentUnclaimed = currentUnclaimedTotal();
@@ -2283,12 +2283,10 @@ function renderClaiming() {
 
 function renderArchive() {
   const totalEver = totalPayrollEverSince();
-  const importedClaimed = sum(state.claimHistory || [], (claim) => Number(claim.amount || 0));
-  const sessionClaimed = sum(state.sessions.filter(isClaimedStatus), totalPay);
   const claimRows = archiveClaimRows();
 
   $("#archiveMetrics").innerHTML = [
-    metric("Total Claimed Payroll", money(importedClaimed || sessionClaimed), `${claimRows.length} claim dates`),
+    metric("Total Claimed Payroll", money(claimedPayrollTotal()), `${claimRows.length} claim dates`),
     metric("Total Payroll Ever Since", money(totalEver), `${state.sessions.length} logs`),
     metric("Current Unclaimed", money(currentUnclaimedTotal()), "open or ready for claiming")
   ].join("");
@@ -2304,6 +2302,12 @@ function archiveClaimRows() {
   return (state.claimHistory || []).length
     ? [...state.claimHistory].sort((a, b) => b.claimDate.localeCompare(a.claimDate))
     : claimHistoryFromSessions();
+}
+
+function claimedPayrollTotal() {
+  const historyTotal = sum(archiveClaimRows(), (claim) => Number(claim.amount || 0));
+  const sessionClaimed = sum(state.sessions.filter(isClaimedStatus), totalPay);
+  return historyTotal || sessionClaimed;
 }
 
 function showClaimHistoryDetails(claim) {
