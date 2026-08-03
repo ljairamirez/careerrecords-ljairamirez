@@ -1392,9 +1392,9 @@ tbody tr.individual-session td:first-child {
 }
 
 .schedule-block.one-time-session {
-  border-left-color: #00b39f;
-  background: #e5fbf7;
-  box-shadow: inset 0 0 0 1px rgba(0, 179, 159, 0.18), 0 5px 12px rgba(31, 44, 50, 0.1);
+  border-left-color: #db2777;
+  background: #fff1f8;
+  box-shadow: inset 0 0 0 1px rgba(219, 39, 119, 0.18), 0 5px 12px rgba(31, 44, 50, 0.1);
 }
 
 .schedule-block.hybrid {
@@ -2556,6 +2556,12 @@ tbody tr.individual-session td:first-child {
   box-shadow:
     inset 0 0 0 2px rgba(122, 76, 194, 0.18),
     0 5px 12px rgba(31, 44, 50, 0.12) !important;
+}
+
+.schedule-block.one-time-session {
+  border-left-color: #db2777 !important;
+  background: #fff1f8 !important;
+  box-shadow: inset 0 0 0 1px rgba(219, 39, 119, 0.18), 0 5px 12px rgba(31, 44, 50, 0.1) !important;
 }
 
 @media (max-width: 700px) {
