@@ -40,6 +40,7 @@ const PERSONAL_ACCESS_STORAGE_KEY = "career-records-personal-unlocked";
 const PERSONAL_ACCESS_CODE = "ljairamirez";
 
 let currentActiveView = "dashboard";
+let sessionRateManuallyEdited = false;
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const weekdays = days.slice(0, 5);
@@ -1496,7 +1497,10 @@ function setupForms() {
   $("#settingsForm").addEventListener("submit", saveSettings);
 
   ["sessionTutor", "sessionClassType", "sessionMode", "sessionPackage"].forEach((id) => {
-    $("#" + id).addEventListener("change", setSuggestedRate);
+    $("#" + id).addEventListener("change", () => setSuggestedRate());
+  });
+  $("#sessionRate").addEventListener("input", () => {
+    sessionRateManuallyEdited = true;
   });
   $("#sessionStudent").addEventListener("change", () => {
     updateSessionPackageOptions();
@@ -2136,7 +2140,7 @@ function personalPackageCardHtml(pkg) {
   const closed = pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
   return `<article class="package-card personal-package-card ${closed ? "personal-closed" : "personal-open"}">
     <label class="package-select"><input type="checkbox" class="personal-package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
-    <div class="package-stats"><span>${pkg.sessions.length} logs · ${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
+    <div class="package-stats"><span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
     <span class="pill ${closed ? "claimed" : "pending"}">${closed ? "Closed" : "Open"}</span>
   </article>`;
 }
@@ -2296,7 +2300,7 @@ function packageCardHtml(pkg) {
   return `<article class="package-card ${packageState.className}${claimAnimation}" data-package-key="${escapeAttr(pkg.key)}">
     <label class="package-select"><input type="checkbox" class="package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
     <div class="package-stats">
-      <span>${pkg.sessions.length} logs · ${number(pkg.hours)} hrs</span>
+      <span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs</span>
       <span>${money(pkg.pay)}</span>
     </div>
     <span class="pill ${packageState.pillClass}">${packageState.label}</span>
@@ -3437,6 +3441,7 @@ function upsert(collection, item) {
 function editSession(id) {
   const session = state.sessions.find((item) => item.id === id);
   if (!session) return;
+  sessionRateManuallyEdited = false;
   $("#sessionId").value = session.id;
   $("#sessionDate").value = session.date;
   $("#sessionStart").value = session.start;
@@ -3530,6 +3535,7 @@ function deleteItem(collection, id) {
 
 function resetSessionForm() {
   $("#sessionForm").reset();
+  sessionRateManuallyEdited = false;
   $("#sessionId").value = "";
   $("#sessionDate").value = new Date().toISOString().slice(0, 10);
   $("#sessionStart").value = DEFAULT_SESSION_START_TIME;
@@ -3586,14 +3592,17 @@ function resetScheduleForm() {
   $("#scheduleStatus").value = "";
 }
 
-function setSuggestedRate() {
+function setSuggestedRate({ force = false } = {}) {
+  const rateInput = $("#sessionRate");
+  const editingExistingSession = Boolean($("#sessionId").value);
+  if (!force && (editingExistingSession || sessionRateManuallyEdited)) return;
   const rate = lookupRate({
     tutor: $("#sessionTutor").value,
     classType: $("#sessionClassType").value,
     mode: $("#sessionMode").value,
     packageName: $("#sessionPackage").value
   });
-  $("#sessionRate").value = rate || "";
+  rateInput.value = rate || "";
 }
 
 function lookupRate(session) {
@@ -3753,7 +3762,9 @@ function totalHours(session) {
 
 function totalPay(session) {
   if (session.status === "Cancelled") return 0;
-  if (Number.isFinite(Number(session.totalPay)) && Number(session.totalPay) > 0) return Number(session.totalPay);
+  if (Object.prototype.hasOwnProperty.call(session, "totalPay") && Number.isFinite(Number(session.totalPay))) {
+    return Number(session.totalPay);
+  }
   return totalHours(session) * Number(session.rate || 0);
 }
 
