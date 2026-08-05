@@ -1614,6 +1614,7 @@ function setupActions() {
   $("#exportSessionsCsv").addEventListener("click", () => exportCsv("session-log.csv", sessionCsvRows(sessionLogRows())));
   $("#exportPersonalCsv")?.addEventListener("click", () => exportCsv("personal-session-log.csv", sessionCsvRows(personalSessionRows())));
   $("#exportPersonalReceiptCsv")?.addEventListener("click", () => exportCsv("personal-receipt-view.csv", sessionCsvRows(personalReceiptSessions())));
+  $("#claimPersonalReceipt")?.addEventListener("click", confirmBefore("Mark all closed personal packages in Receipt View as claimed?", claimPersonalReceipt));
   $("#exportClaimCsv").addEventListener("click", () => exportCsv("claiming-view.csv", sessionCsvRows(claimableSessions())));
   $("#exportJson").addEventListener("click", () => downloadFile("salary-sheet-backup.json", JSON.stringify(state, null, 2), "application/json"));
   $("#importJson").addEventListener("change", importJson);
@@ -2207,11 +2208,15 @@ function renderPersonalPackages() {
 }
 
 function personalPackageCardHtml(pkg) {
-  const closed = pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
-  return `<article class="package-card personal-package-card ${closed ? "personal-closed" : "personal-open"}">
+  const claimed = pkg.sessions.length && pkg.sessions.every(isClaimedStatus);
+  const closed = !claimed && pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
+  const stateClass = claimed ? "personal-claimed" : closed ? "personal-closed" : "personal-open";
+  const stateLabel = claimed ? "Claimed" : closed ? "Closed" : "Open";
+  const pillClass = claimed ? "claimed" : closed ? "claimed" : "pending";
+  return `<article class="package-card personal-package-card ${stateClass}">
     <label class="package-select"><input type="checkbox" class="personal-package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
     <div class="package-stats"><span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
-    <span class="pill ${closed ? "claimed" : "pending"}">${closed ? "Closed" : "Open"}</span>
+    <span class="pill ${pillClass}">${stateLabel}</span>
   </article>`;
 }
 
@@ -2223,7 +2228,7 @@ function personalReceiptSessions() {
 }
 
 function isPersonalReceiptStatus(session) {
-  return session.status === "Closed" || isClaimedStatus(session);
+  return session.status === "Closed" && !isClaimedStatus(session);
 }
 
 function renderPersonalReceipt() {
@@ -2256,6 +2261,21 @@ function renderPersonalReceipt() {
     )).join("");
     return `<tr class="claim-package-head personal-receipt-head"><td colspan="6"><strong>${escapeHtml(pkg.student)} / ${escapeHtml(pkg.label)}</strong><span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs &middot; ${money(pkg.pay)}</span></td></tr>${body}<tr class="claim-package-total personal-receipt-total"><td colspan="3">TOTAL HRS</td><td>${number(pkg.hours)}</td><td>TOTAL</td><td>${money(pkg.pay)}</td></tr>`;
   }).join("") || emptyRow(6);
+}
+
+function claimPersonalReceipt() {
+  const receiptDate = $("#personalReceiptDate")?.value || new Date().toISOString().slice(0, 10);
+  const ids = new Set(personalReceiptSessions().map((session) => session.id));
+  if (!ids.size) return;
+  state.personalSessions ||= [];
+  state.personalSessions.forEach((session) => {
+    if (!ids.has(session.id)) return;
+    session.status = "Claimed";
+    session.claimed = true;
+    session.claimDate = receiptDate;
+  });
+  saveState();
+  render();
 }
 function renderPersonalGroups() {
   const target = $("#personalStudentGroups");
