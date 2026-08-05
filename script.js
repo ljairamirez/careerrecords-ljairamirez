@@ -3668,6 +3668,7 @@ function bindManagementRowActions() {
   $$('[data-delete-management-salary]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this salary record?", () => deleteManagementSalary(button.dataset.deleteManagementSalary))));
   $$('[data-edit-management-allocation]').forEach((button) => button.addEventListener("click", () => editManagementAllocation(button.dataset.editManagementAllocation)));
   $$('[data-delete-management-allocation]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this allocation?", () => deleteManagementAllocation(button.dataset.deleteManagementAllocation))));
+  bindManagementPieHover();
 }
 
 function managementBreakdownSegments(allocations, net) {
@@ -3722,18 +3723,42 @@ function managementPieHtml(allocations, net) {
     const dash = share * circumference;
     const gap = circumference - dash;
     const title = `${segment.label}: ${money(segment.amount)} (${number(segment.percent)}%)`;
-    const circle = `<circle class="management-pie-segment" r="${radius}" cx="50" cy="50" fill="transparent" stroke="${escapeAttr(segment.color)}" stroke-width="18" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" tabindex="0"><title>${escapeHtml(title)}</title></circle>`;
+    const circle = `<circle class="management-pie-segment" r="${radius}" cx="50" cy="50" fill="transparent" stroke="${escapeAttr(segment.color)}" stroke-width="18" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" tabindex="0" data-pie-summary="${escapeAttr(title)}"><title>${escapeHtml(title)}</title></circle>`;
     offset += dash;
     return circle;
   }).join("");
-  return `<svg class="management-pie" viewBox="0 0 100 100" role="img" aria-label="Allocation breakdown for ${escapeAttr(monthName(currentManagementMonth()))}">
-    <circle r="42" cx="50" cy="50" fill="transparent" stroke="#e2edf0" stroke-width="18"></circle>
-    <g transform="rotate(-90 50 50)">${rings}</g>
-    <text x="50" y="47" text-anchor="middle" class="pie-center-main">${number(Math.min(100, sum(segments.filter((segment) => segment.type === "allocation"), (segment) => segment.percent)))}%</text>
-    <text x="50" y="59" text-anchor="middle" class="pie-center-sub">allocated</text>
-  </svg>`;
+  const allocatedPercent = number(Math.min(100, sum(segments.filter((segment) => segment.type === "allocation"), (segment) => segment.percent)));
+  const defaultSummary = "Hover a slice to view amount and percent";
+  return `<div class="management-pie-stage">
+    <svg class="management-pie" viewBox="0 0 100 100" role="img" aria-label="Allocation breakdown for ${escapeAttr(monthName(currentManagementMonth()))}">
+      <circle r="42" cx="50" cy="50" fill="transparent" stroke="#e2edf0" stroke-width="18"></circle>
+      <g transform="rotate(-90 50 50)">${rings}</g>
+      <text x="50" y="47" text-anchor="middle" class="pie-center-main">${allocatedPercent}%</text>
+      <text x="50" y="59" text-anchor="middle" class="pie-center-sub">allocated</text>
+    </svg>
+    <div class="management-pie-hover" id="managementPieHover">${escapeHtml(defaultSummary)}</div>
+  </div>`;
 }
 
+function bindManagementPieHover() {
+  const readout = $("#managementPieHover");
+  if (!readout) return;
+  const defaultText = readout.textContent;
+  $$(".management-pie-segment").forEach((segment) => {
+    const show = () => {
+      readout.textContent = segment.dataset.pieSummary || defaultText;
+      readout.classList.add("active");
+    };
+    const reset = () => {
+      readout.textContent = defaultText;
+      readout.classList.remove("active");
+    };
+    segment.addEventListener("mouseenter", show);
+    segment.addEventListener("focus", show);
+    segment.addEventListener("mouseleave", reset);
+    segment.addEventListener("blur", reset);
+  });
+}
 function managementBreakdownListHtml(allocations, net) {
   const segments = managementBreakdownSegments(allocations, net);
   if (!segments.length) return `<p class="empty">Add allocation segments to see the breakdown.</p>`;
