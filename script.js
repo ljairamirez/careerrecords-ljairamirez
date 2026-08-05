@@ -3655,25 +3655,145 @@ function renderManagement() {
     metric("Remaining", money(remaining), `${number(allocatedPercent)}% allocated`, "total")
   ].join("");
 
-  $("#managementSalaryRows").innerHTML = state.management.salaries
-    .sort((a, b) => b.month.localeCompare(a.month))
-    .map((item) => {
-      const itemTax = managementTaxAmount(item);
-      const itemNet = managementNetIncome(item);
-      return `<tr><td>${escapeHtml(monthName(item.month))}</td><td>${money(item.gross)}</td><td>${money(itemTax)} (${number(item.taxPercent)}%)</td><td>${money(itemNet)}</td><td>${escapeHtml(item.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-salary="${escapeAttr(item.id)}">Edit</button><button class="mini" type="button" data-delete-management-salary="${escapeAttr(item.id)}">Delete</button></div></td></tr>`;
-    }).join("") || emptyRow(6);
+  if ($("#managementBreakdownMonth")) $("#managementBreakdownMonth").textContent = monthName(month);
+  if ($("#managementPie")) $("#managementPie").innerHTML = managementPieHtml(allocations, net);
+  if ($("#managementBreakdownList")) $("#managementBreakdownList").innerHTML = managementBreakdownListHtml(allocations, net);
+  if ($("#managementMonthGroups")) $("#managementMonthGroups").innerHTML = managementMonthGroupsHtml(month);
 
-  $("#managementAllocationRows").innerHTML = allocations.map((item) => {
-    const amount = net * Number(item.percent || 0) / 100;
-    return `<tr><td>${escapeHtml(monthName(item.month))}</td><td>${escapeHtml(item.name)}</td><td>${number(item.percent)}%</td><td>${money(amount)}</td><td>${escapeHtml(item.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-allocation="${escapeAttr(item.id)}">Edit</button><button class="mini" type="button" data-delete-management-allocation="${escapeAttr(item.id)}">Delete</button></div></td></tr>`;
-  }).join("") || emptyRow(6);
+  bindManagementRowActions();
+}
 
+function bindManagementRowActions() {
   $$('[data-edit-management-salary]').forEach((button) => button.addEventListener("click", () => editManagementSalary(button.dataset.editManagementSalary)));
   $$('[data-delete-management-salary]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this salary record?", () => deleteManagementSalary(button.dataset.deleteManagementSalary))));
   $$('[data-edit-management-allocation]').forEach((button) => button.addEventListener("click", () => editManagementAllocation(button.dataset.editManagementAllocation)));
   $$('[data-delete-management-allocation]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this allocation?", () => deleteManagementAllocation(button.dataset.deleteManagementAllocation))));
 }
 
+function managementBreakdownSegments(allocations, net) {
+  const positiveNet = Math.max(0, Number(net || 0));
+  const allocationSegments = allocations
+    .map((allocation, index) => {
+      const percent = Number(allocation.percent || 0);
+      const amount = positiveNet * percent / 100;
+      return {
+        label: allocation.name || "Allocation",
+        percent,
+        amount,
+        color: managementPieColor(index),
+        type: "allocation"
+      };
+    })
+    .filter((segment) => segment.amount > 0 || segment.percent > 0);
+  const allocated = sum(allocationSegments, (segment) => segment.amount);
+  const remaining = positiveNet - allocated;
+  if (remaining > 0) {
+    allocationSegments.push({
+      label: "Unallocated",
+      percent: positiveNet ? (remaining / positiveNet) * 100 : 0,
+      amount: remaining,
+      color: "#94a3b8",
+      type: "remaining"
+    });
+  }
+  if (remaining < 0) {
+    allocationSegments.push({
+      label: "Overallocated",
+      percent: positiveNet ? (Math.abs(remaining) / positiveNet) * 100 : 0,
+      amount: Math.abs(remaining),
+      color: "#dc2626",
+      type: "over"
+    });
+  }
+  return allocationSegments;
+}
+
+function managementPieHtml(allocations, net) {
+  const segments = managementBreakdownSegments(allocations, net);
+  const total = sum(segments, (segment) => Math.max(0, segment.amount));
+  if (!total) {
+    return `<div class="management-pie-empty">No allocation yet</div>`;
+  }
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const rings = segments.map((segment) => {
+    const share = Math.max(0, segment.amount) / total;
+    const dash = share * circumference;
+    const gap = circumference - dash;
+    const title = `${segment.label}: ${money(segment.amount)} (${number(segment.percent)}%)`;
+    const circle = `<circle class="management-pie-segment" r="${radius}" cx="50" cy="50" fill="transparent" stroke="${escapeAttr(segment.color)}" stroke-width="18" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" tabindex="0"><title>${escapeHtml(title)}</title></circle>`;
+    offset += dash;
+    return circle;
+  }).join("");
+  return `<svg class="management-pie" viewBox="0 0 100 100" role="img" aria-label="Allocation breakdown for ${escapeAttr(monthName(currentManagementMonth()))}">
+    <circle r="42" cx="50" cy="50" fill="transparent" stroke="#e2edf0" stroke-width="18"></circle>
+    <g transform="rotate(-90 50 50)">${rings}</g>
+    <text x="50" y="47" text-anchor="middle" class="pie-center-main">${number(Math.min(100, sum(segments.filter((segment) => segment.type === "allocation"), (segment) => segment.percent)))}%</text>
+    <text x="50" y="59" text-anchor="middle" class="pie-center-sub">allocated</text>
+  </svg>`;
+}
+
+function managementBreakdownListHtml(allocations, net) {
+  const segments = managementBreakdownSegments(allocations, net);
+  if (!segments.length) return `<p class="empty">Add allocation segments to see the breakdown.</p>`;
+  return segments.map((segment) => (
+    `<article class="management-breakdown-item ${escapeAttr(segment.type)}" title="${escapeAttr(`${segment.label}: ${money(segment.amount)} (${number(segment.percent)}%)`)}">
+      <span class="management-dot" style="--dot:${escapeAttr(segment.color)}"></span>
+      <strong>${escapeHtml(segment.label)}</strong>
+      <span>${money(segment.amount)}</span>
+      <small>${number(segment.percent)}%</small>
+    </article>`
+  )).join("");
+}
+
+function managementMonthGroupsHtml(selectedMonth = currentManagementMonth()) {
+  const months = uniqueValues([
+    ...(state.management.salaries || []).map((salary) => salary.month),
+    ...(state.management.allocations || []).map((allocation) => allocation.month)
+  ].filter(Boolean)).sort((a, b) => b.localeCompare(a));
+  if (!months.length) return `<p class="empty">No management records yet.</p>`;
+  return months.map((month) => managementMonthGroupHtml(month, month === selectedMonth)).join("");
+}
+
+function managementMonthGroupHtml(month, open = false) {
+  const salary = managementSalaryForMonth(month);
+  const allocations = managementAllocationsForMonth(month);
+  const tax = managementTaxAmount(salary);
+  const net = managementNetIncome(salary);
+  const allocatedPercent = sum(allocations, (allocation) => Number(allocation.percent || 0));
+  const allocated = sum(allocations, (allocation) => net * Number(allocation.percent || 0) / 100);
+  const remaining = net - allocated;
+  const salaryRows = salary ? `<tr><td>Gross Salary</td><td>${money(salary.gross)}</td><td>${money(tax)} (${number(salary.taxPercent)}%)</td><td>${money(net)}</td><td>${escapeHtml(salary.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-salary="${escapeAttr(salary.id)}">Edit</button><button class="mini" type="button" data-delete-management-salary="${escapeAttr(salary.id)}">Delete</button></div></td></tr>` : emptyRow(6);
+  const allocationRows = allocations.map((allocation) => {
+    const amount = net * Number(allocation.percent || 0) / 100;
+    return `<tr><td>${escapeHtml(allocation.name)}</td><td>${number(allocation.percent)}%</td><td>${money(amount)}</td><td colspan="2">${escapeHtml(allocation.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-allocation="${escapeAttr(allocation.id)}">Edit</button><button class="mini" type="button" data-delete-management-allocation="${escapeAttr(allocation.id)}">Delete</button></div></td></tr>`;
+  }).join("") || emptyRow(6);
+  return `<details class="management-month-group"${open ? " open" : ""}>
+    <summary>
+      <span>${escapeHtml(monthName(month))}</span>
+      <small>Net ${money(net)} &middot; Allocated ${number(allocatedPercent)}% &middot; Remaining ${money(remaining)}</small>
+    </summary>
+    <div class="management-month-body">
+      <div class="table-wrap compact-table">
+        <table>
+          <thead><tr><th>Salary</th><th>Gross</th><th>Tax</th><th>Net</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${salaryRows}</tbody>
+        </table>
+      </div>
+      <div class="table-wrap compact-table">
+        <table>
+          <thead><tr><th>Segment</th><th>Percent</th><th>Amount</th><th colspan="2">Notes</th><th></th></tr></thead>
+          <tbody>${allocationRows}</tbody>
+        </table>
+      </div>
+    </div>
+  </details>`;
+}
+
+function managementPieColor(index) {
+  return ["#06b6d4", "#2dd4bf", "#f59e0b", "#8b5cf6", "#14b8a6", "#0ea5e9", "#f97316", "#64748b"][index % 8];
+}
 function saveManagementSalary(event) {
   event.preventDefault();
   state.management = normalizeManagementState(state.management);

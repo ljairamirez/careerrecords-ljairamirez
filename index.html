@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=52">
+  <link rel="stylesheet" href="style.css?v=53">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -609,6 +609,16 @@
         <label><span>Month</span><input id="managementMonth" type="month"></label>
       </section>
       <div class="metric-grid management-metrics" id="managementMetrics"></div>
+      <section class="panel management-panel management-breakdown-panel">
+        <div class="panel-head">
+          <h2>Selected Month Breakdown</h2>
+          <span id="managementBreakdownMonth"></span>
+        </div>
+        <div class="management-breakdown-body">
+          <div class="management-pie-wrap" id="managementPie"></div>
+          <div class="management-breakdown-list" id="managementBreakdownList"></div>
+        </div>
+      </section>
       <div class="management-layout">
         <section class="panel form-panel management-panel">
           <div class="panel-head">
@@ -639,30 +649,19 @@
           </form>
         </section>
       </div>
-      <section class="panel management-panel">
-        <div class="panel-head"><h2>Monthly Salary Records</h2></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Month</th><th>Gross</th><th>Tax</th><th>Net Income</th><th>Notes</th><th></th></tr></thead>
-            <tbody id="managementSalaryRows"></tbody>
-          </table>
+      <section class="panel management-panel management-history-panel">
+        <div class="panel-head">
+          <h2>Monthly Breakdown</h2>
+          <span>Grouped by month</span>
         </div>
-      </section>
-      <section class="panel management-panel">
-        <div class="panel-head"><h2>Allocation Plan</h2></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Month</th><th>Segment</th><th>Percent</th><th>Amount</th><th>Notes</th><th></th></tr></thead>
-            <tbody id="managementAllocationRows"></tbody>
-          </table>
-        </div>
+        <div class="management-month-groups" id="managementMonthGroups"></div>
       </section>
     </section>
   </main>
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=113"></script>
+  <script src="script.js?v=114"></script>
 </body>
 </html>
 
