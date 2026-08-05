@@ -34,8 +34,11 @@ const PERSONAL_VIEW_IDS = new Set([
   "personal-packages",
   "personal-students"
 ]);
+const MANAGEMENT_VIEW_IDS = new Set(["management"]);
 
 const PERSONAL_ACCESS_STORAGE_KEY = "career-records-personal-unlocked";
+const MANAGEMENT_ACCESS_STORAGE_KEY = "career-records-management-unlocked";
+const MANAGEMENT_ACCESS_HASH = "d81c16dd903dd64d1880d5c1d396bff60f25740ee8bd420bc5975223efbfea5c";
 
 const PERSONAL_ACCESS_CODE = "ljairamirez";
 
@@ -761,6 +764,10 @@ const defaultState = {
   ],
   personalSessions: [],
   records: [],
+  management: {
+    salaries: [],
+    allocations: []
+  },
   cvProfile: buildDefaultCvProfile(),
   cvSections: buildDefaultCvSections(),
   cvResumeItemIds: [],
@@ -1109,6 +1116,7 @@ function migrateState(inputState) {
     attachmentId: record.attachmentId || "",
     attachmentUrl: record.attachmentUrl || ""
   }));
+  next.management = normalizeManagementState(next.management);
   next.cvProfile = normalizeCvProfile(next.cvProfile);
   next.cvSections = normalizeCvSections(next.cvSections || buildDefaultCvSections());
   ensureUpggArimaongaEntry(next);
@@ -1424,6 +1432,35 @@ function lockPersonalAccess() {
   window.alert("Personal records have been locked.");
 }
 
+function isManagementUnlocked() {
+  return sessionStorage.getItem(MANAGEMENT_ACCESS_STORAGE_KEY) === "true";
+}
+
+async function sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function requestManagementAccess() {
+  if (isManagementUnlocked()) return true;
+
+  const enteredPassword = window.prompt("Enter the Management access code:");
+  if (enteredPassword === null) return false;
+
+  try {
+    if (await sha256Text(enteredPassword) === MANAGEMENT_ACCESS_HASH) {
+      sessionStorage.setItem(MANAGEMENT_ACCESS_STORAGE_KEY, "true");
+      return true;
+    }
+  } catch (error) {
+    window.alert("Management lock is unavailable in this browser session.");
+    return false;
+  }
+
+  window.alert("Incorrect access code.");
+  return false;
+}
 function setupNavigation() {
   const menuToggle = $("#menuToggle");
   const sidebar = $("#sidebar");
@@ -1437,7 +1474,7 @@ function setupNavigation() {
     setMenuOpen(!sidebar?.classList.contains("open"));
   });
 
-  const activate = () => {
+  const activate = async () => {
     const requestedId = (location.hash || "#dashboard").replace("#", "");
     let target = document.getElementById(requestedId) ? requestedId : "dashboard";
 
@@ -1448,8 +1485,24 @@ function setupNavigation() {
     if (leavingPersonal) {
       sessionStorage.removeItem(PERSONAL_ACCESS_STORAGE_KEY);
     }
+    const leavingManagement =
+      MANAGEMENT_VIEW_IDS.has(currentActiveView) &&
+      !MANAGEMENT_VIEW_IDS.has(target);
+
+    if (leavingManagement) {
+      sessionStorage.removeItem(MANAGEMENT_ACCESS_STORAGE_KEY);
+    }
 
     if (PERSONAL_VIEW_IDS.has(target) && !requestPersonalAccess()) {
+      target = "dashboard";
+
+      if (location.hash !== "#dashboard") {
+        location.hash = "#dashboard";
+        return;
+      }
+    }
+
+    if (MANAGEMENT_VIEW_IDS.has(target) && !(await requestManagementAccess())) {
       target = "dashboard";
 
       if (location.hash !== "#dashboard") {
@@ -1542,6 +1595,14 @@ function setupForms() {
   $("#clearSessionForm").addEventListener("click", resetSessionForm);
   $("#clearPersonalSessionForm")?.addEventListener("click", resetPersonalSessionForm);
   $("#clearRecordForm")?.addEventListener("click", resetRecordForm);
+  $("#managementSalaryForm")?.addEventListener("submit", saveManagementSalary);
+  $("#managementAllocationForm")?.addEventListener("submit", saveManagementAllocation);
+  $("#managementMonth")?.addEventListener("change", () => {
+    syncManagementMonthInputs();
+    renderManagement();
+  });
+  $("#clearManagementSalary")?.addEventListener("click", resetManagementSalaryForm);
+  $("#clearManagementAllocation")?.addEventListener("click", resetManagementAllocationForm);
   $("#clearScheduleForm").addEventListener("click", resetScheduleForm);
 }
 
@@ -1573,6 +1634,9 @@ function hydrateControls() {
   $("#monthFilter").value ||= today.slice(0, 7);
   $("#claimDate").value ||= claimDate;
   if ($("#packageClaimDate")) $("#packageClaimDate").value ||= claimDate;
+  const managementMonth = today.slice(0, 7);
+  if ($("#managementMonth")) $("#managementMonth").value ||= managementMonth;
+  syncManagementMonthInputs();
   enforceClaimCutoffInputs();
 
   if ($("#tutorFilter")) fillSelect($("#tutorFilter"), ["All Tutors", ...state.settings.tutors], "All Tutors");
@@ -1647,6 +1711,7 @@ function render() {
   renderStudentStatuses();
   renderRecords();
   renderCareerDocuments();
+  renderManagement();
   hydrateProfilePhotos();
 }
 
@@ -3522,6 +3587,190 @@ function editSchedule(id) {
   $("#scheduleNotes").value = item.notes || "";
 }
 
+function normalizeManagementState(management = {}) {
+  return {
+    salaries: (management.salaries || []).map((salary) => ({
+      id: salary.id || uid(),
+      month: salary.month || "",
+      gross: Number(salary.gross || 0),
+      taxPercent: Number(salary.taxPercent || 0),
+      notes: salary.notes || ""
+    })),
+    allocations: (management.allocations || []).map((allocation) => ({
+      id: allocation.id || uid(),
+      month: allocation.month || "",
+      name: allocation.name || "",
+      percent: Number(allocation.percent || 0),
+      notes: allocation.notes || ""
+    }))
+  };
+}
+
+function currentManagementMonth() {
+  return $("#managementMonth")?.value || new Date().toISOString().slice(0, 7);
+}
+
+function syncManagementMonthInputs() {
+  const month = currentManagementMonth();
+  if ($("#salaryMonth")) $("#salaryMonth").value ||= month;
+  if ($("#allocationMonth")) $("#allocationMonth").value ||= month;
+}
+
+function managementSalaryForMonth(month = currentManagementMonth()) {
+  state.management = normalizeManagementState(state.management);
+  return state.management.salaries.find((salary) => salary.month === month) || null;
+}
+
+function managementTaxAmount(salary) {
+  return Number(salary?.gross || 0) * Number(salary?.taxPercent || 0) / 100;
+}
+
+function managementNetIncome(salary) {
+  return Math.max(0, Number(salary?.gross || 0) - managementTaxAmount(salary));
+}
+
+function managementAllocationsForMonth(month = currentManagementMonth()) {
+  state.management = normalizeManagementState(state.management);
+  return state.management.allocations
+    .filter((allocation) => allocation.month === month)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function renderManagement() {
+  if (!$("#managementMetrics")) return;
+  state.management = normalizeManagementState(state.management);
+  const month = currentManagementMonth();
+  const salary = managementSalaryForMonth(month);
+  const tax = managementTaxAmount(salary);
+  const net = managementNetIncome(salary);
+  const allocations = managementAllocationsForMonth(month);
+  const allocatedPercent = sum(allocations, (allocation) => Number(allocation.percent || 0));
+  const allocated = sum(allocations, (allocation) => net * Number(allocation.percent || 0) / 100);
+  const remaining = net - allocated;
+
+  $("#managementMetrics").innerHTML = [
+    metric("Gross Salary", money(salary?.gross || 0), monthName(month), "earnings"),
+    metric("Less Tax", money(tax), `${number(salary?.taxPercent || 0)}%`, "peak"),
+    metric("Net Income", money(net), "after tax", "unclaimed"),
+    metric("Remaining", money(remaining), `${number(allocatedPercent)}% allocated`, "total")
+  ].join("");
+
+  $("#managementSalaryRows").innerHTML = state.management.salaries
+    .sort((a, b) => b.month.localeCompare(a.month))
+    .map((item) => {
+      const itemTax = managementTaxAmount(item);
+      const itemNet = managementNetIncome(item);
+      return `<tr><td>${escapeHtml(monthName(item.month))}</td><td>${money(item.gross)}</td><td>${money(itemTax)} (${number(item.taxPercent)}%)</td><td>${money(itemNet)}</td><td>${escapeHtml(item.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-salary="${escapeAttr(item.id)}">Edit</button><button class="mini" type="button" data-delete-management-salary="${escapeAttr(item.id)}">Delete</button></div></td></tr>`;
+    }).join("") || emptyRow(6);
+
+  $("#managementAllocationRows").innerHTML = allocations.map((item) => {
+    const amount = net * Number(item.percent || 0) / 100;
+    return `<tr><td>${escapeHtml(monthName(item.month))}</td><td>${escapeHtml(item.name)}</td><td>${number(item.percent)}%</td><td>${money(amount)}</td><td>${escapeHtml(item.notes || "")}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-allocation="${escapeAttr(item.id)}">Edit</button><button class="mini" type="button" data-delete-management-allocation="${escapeAttr(item.id)}">Delete</button></div></td></tr>`;
+  }).join("") || emptyRow(6);
+
+  $$('[data-edit-management-salary]').forEach((button) => button.addEventListener("click", () => editManagementSalary(button.dataset.editManagementSalary)));
+  $$('[data-delete-management-salary]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this salary record?", () => deleteManagementSalary(button.dataset.deleteManagementSalary))));
+  $$('[data-edit-management-allocation]').forEach((button) => button.addEventListener("click", () => editManagementAllocation(button.dataset.editManagementAllocation)));
+  $$('[data-delete-management-allocation]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this allocation?", () => deleteManagementAllocation(button.dataset.deleteManagementAllocation))));
+}
+
+function saveManagementSalary(event) {
+  event.preventDefault();
+  state.management = normalizeManagementState(state.management);
+  const id = $("#managementSalaryId").value || uid();
+  const existing = state.management.salaries.find((item) => item.id === id);
+  if (existing && !window.confirm("Save the updated salary record?")) return;
+  const salary = {
+    id,
+    month: $("#salaryMonth").value,
+    gross: Number($("#salaryGross").value || 0),
+    taxPercent: Number($("#salaryTaxPercent").value || 0),
+    notes: $("#salaryNotes").value.trim()
+  };
+  upsertManagementItem("salaries", salary);
+  $("#managementMonth").value = salary.month;
+  resetManagementSalaryForm();
+  saveState();
+  renderManagement();
+}
+
+function saveManagementAllocation(event) {
+  event.preventDefault();
+  state.management = normalizeManagementState(state.management);
+  const id = $("#managementAllocationId").value || uid();
+  const existing = state.management.allocations.find((item) => item.id === id);
+  if (existing && !window.confirm("Save the updated allocation?")) return;
+  const allocation = {
+    id,
+    month: $("#allocationMonth").value,
+    name: $("#allocationName").value.trim(),
+    percent: Number($("#allocationPercent").value || 0),
+    notes: $("#allocationNotes").value.trim()
+  };
+  upsertManagementItem("allocations", allocation);
+  $("#managementMonth").value = allocation.month;
+  resetManagementAllocationForm();
+  saveState();
+  renderManagement();
+}
+
+function upsertManagementItem(collection, item) {
+  state.management ||= { salaries: [], allocations: [] };
+  const rows = state.management[collection] || [];
+  const index = rows.findIndex((existing) => existing.id === item.id);
+  if (index >= 0) rows[index] = item;
+  else rows.push(item);
+  state.management[collection] = rows;
+}
+
+function editManagementSalary(id) {
+  const item = state.management?.salaries?.find((salary) => salary.id === id);
+  if (!item) return;
+  $("#managementSalaryId").value = item.id;
+  $("#salaryMonth").value = item.month;
+  $("#salaryGross").value = item.gross;
+  $("#salaryTaxPercent").value = item.taxPercent;
+  $("#salaryNotes").value = item.notes || "";
+}
+
+function editManagementAllocation(id) {
+  const item = state.management?.allocations?.find((allocation) => allocation.id === id);
+  if (!item) return;
+  $("#managementAllocationId").value = item.id;
+  $("#allocationMonth").value = item.month;
+  $("#allocationName").value = item.name;
+  $("#allocationPercent").value = item.percent;
+  $("#allocationNotes").value = item.notes || "";
+}
+
+function deleteManagementSalary(id) {
+  state.management = normalizeManagementState(state.management);
+  state.management.salaries = state.management.salaries.filter((item) => item.id !== id);
+  saveState();
+  renderManagement();
+}
+
+function deleteManagementAllocation(id) {
+  state.management = normalizeManagementState(state.management);
+  state.management.allocations = state.management.allocations.filter((item) => item.id !== id);
+  saveState();
+  renderManagement();
+}
+
+function resetManagementSalaryForm() {
+  if (!$("#managementSalaryForm")) return;
+  $("#managementSalaryForm").reset();
+  $("#managementSalaryId").value = "";
+  $("#salaryMonth").value = currentManagementMonth();
+  $("#salaryTaxPercent").value = "0";
+}
+
+function resetManagementAllocationForm() {
+  if (!$("#managementAllocationForm")) return;
+  $("#managementAllocationForm").reset();
+  $("#managementAllocationId").value = "";
+  $("#allocationMonth").value = currentManagementMonth();
+}
 function deleteItem(collection, id) {
   if (collection === "records") {
     const record = state.records.find((item) => item.id === id);
