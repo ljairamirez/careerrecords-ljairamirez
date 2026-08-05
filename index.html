@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=56">
+  <link rel="stylesheet" href="style.css?v=57">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -48,6 +48,7 @@
         <summary>Personal</summary>
         <a href="#personal-sessions" data-view="personal-sessions">Record Log</a>
         <a href="#personal-packages" data-view="personal-packages">Per Package</a>
+        <a href="#personal-receipt" data-view="personal-receipt">Receipt View</a>
         <a href="#personal-students" data-view="personal-students">Per Student</a>
       </details>
       <a href="#settings" data-view="settings">Settings</a>
@@ -386,6 +387,28 @@
       </section>
     </section>
 
+
+    <section class="view personal-view printable" id="personal-receipt" data-title="Personal Receipt View">
+      <section class="panel release-panel personal-receipt-panel">
+        <div class="release-head">
+          <div>
+            <p class="eyebrow">Personal Receipt</p>
+            <h2>Receipt View</h2>
+          </div>
+          <div class="claim-meta">
+            <label><span>Receipt Date</span><input type="date" id="personalReceiptDate"></label>
+            <button class="ghost" id="exportPersonalReceiptCsv" type="button">Export CSV</button>
+          </div>
+        </div>
+        <div class="metric-grid small" id="personalReceiptMetrics"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Student</th><th>Time</th><th>Hours</th><th>Rate</th><th>Total Pay</th></tr></thead>
+            <tbody id="personalReceiptRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
     <section class="view personal-view" id="personal-students" data-title="Personal Per Student">
       <div class="group-list" id="personalStudentGroups"></div>
     </section>
@@ -661,7 +684,7 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=115"></script>
+  <script src="script.js?v=116"></script>
 </body>
 </html>
 

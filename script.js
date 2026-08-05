@@ -32,6 +32,7 @@ const CORRECTED_IMPORTED_SESSION_DATES = {
 const PERSONAL_VIEW_IDS = new Set([
   "personal-sessions",
   "personal-packages",
+  "personal-receipt",
   "personal-students"
 ]);
 const MANAGEMENT_VIEW_IDS = new Set(["management"]);
@@ -1586,6 +1587,7 @@ function setupForms() {
   $("#studentGroupSortDirection")?.addEventListener("change", renderGroups);
   $("#packageSearch")?.addEventListener("input", renderPackages);
   $("#personalPackageSearch")?.addEventListener("input", renderPersonalPackages);
+  $("#personalReceiptDate")?.addEventListener("change", renderPersonalReceipt);
   $("#claimDate").addEventListener("change", () => {
     enforceClaimCutoffInputs();
     saveState();
@@ -1611,6 +1613,7 @@ function setupActions() {
   $("#markClaimed").addEventListener("click", confirmBefore("Claim all packages shown in Claiming View?", markClaimed));
   $("#exportSessionsCsv").addEventListener("click", () => exportCsv("session-log.csv", sessionCsvRows(sessionLogRows())));
   $("#exportPersonalCsv")?.addEventListener("click", () => exportCsv("personal-session-log.csv", sessionCsvRows(personalSessionRows())));
+  $("#exportPersonalReceiptCsv")?.addEventListener("click", () => exportCsv("personal-receipt-view.csv", sessionCsvRows(personalReceiptSessions())));
   $("#exportClaimCsv").addEventListener("click", () => exportCsv("claiming-view.csv", sessionCsvRows(claimableSessions())));
   $("#exportJson").addEventListener("click", () => downloadFile("salary-sheet-backup.json", JSON.stringify(state, null, 2), "application/json"));
   $("#importJson").addEventListener("change", importJson);
@@ -1634,6 +1637,7 @@ function hydrateControls() {
   $("#monthFilter").value ||= today.slice(0, 7);
   $("#claimDate").value ||= claimDate;
   if ($("#packageClaimDate")) $("#packageClaimDate").value ||= claimDate;
+  if ($("#personalReceiptDate")) $("#personalReceiptDate").value ||= today;
   const managementMonth = today.slice(0, 7);
   if ($("#managementMonth")) $("#managementMonth").value ||= managementMonth;
   syncManagementMonthInputs();
@@ -1699,6 +1703,7 @@ function render() {
   renderSessions();
   renderPersonalSessions();
   renderPersonalPackages();
+  renderPersonalReceipt();
   renderPersonalGroups();
   renderRates();
   renderSchedule();
@@ -2210,6 +2215,48 @@ function personalPackageCardHtml(pkg) {
   </article>`;
 }
 
+
+function personalReceiptSessions() {
+  return (state.personalSessions || [])
+    .filter(isPersonalReceiptStatus)
+    .sort((a, b) => a.student.localeCompare(b.student) || packageLabel(a).localeCompare(packageLabel(b)) || a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+}
+
+function isPersonalReceiptStatus(session) {
+  return session.status === "Closed" || isClaimedStatus(session);
+}
+
+function renderPersonalReceipt() {
+  const metricsTarget = $("#personalReceiptMetrics");
+  const rowsTarget = $("#personalReceiptRows");
+  if (!metricsTarget || !rowsTarget) return;
+
+  const rows = personalReceiptSessions();
+  const totals = summarize(rows);
+  const receiptDate = $("#personalReceiptDate")?.value || new Date().toISOString().slice(0, 10);
+  metricsTarget.innerHTML = [
+    metric("Receipt Amount", money(totals.pay), `${totals.sessions} sessions`, "earnings"),
+    metric("Total Hours", number(totals.hours), "closed personal packages", "unclaimed"),
+    metric("Receipt Date", receiptDate ? formatDate(receiptDate) : "Not set", "personal receipt", "total")
+  ].join("");
+
+  const groups = packageSummaries(rows)
+    .sort((a, b) => a.student.localeCompare(b.student) || (packageNumber(a.label) ?? 999) - (packageNumber(b.label) ?? 999) || a.label.localeCompare(b.label));
+
+  rowsTarget.innerHTML = groups.map((pkg) => {
+    const body = pkg.sessions.map((session) => (
+      `<tr class="claim-row personal-receipt-row personal-row">
+        <td>${formatDate(session.date)}</td>
+        <td>${escapeHtml(session.student)}</td>
+        <td>${escapeHtml(formatTimeRange(session.start, session.end))}</td>
+        <td>${number(totalHours(session))}</td>
+        <td>${money(session.rate)}</td>
+        <td>${money(totalPay(session))}</td>
+      </tr>`
+    )).join("");
+    return `<tr class="claim-package-head personal-receipt-head"><td colspan="6"><strong>${escapeHtml(pkg.student)} / ${escapeHtml(pkg.label)}</strong><span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs &middot; ${money(pkg.pay)}</span></td></tr>${body}<tr class="claim-package-total personal-receipt-total"><td colspan="3">TOTAL HRS</td><td>${number(pkg.hours)}</td><td>TOTAL</td><td>${money(pkg.pay)}</td></tr>`;
+  }).join("") || emptyRow(6);
+}
 function renderPersonalGroups() {
   const target = $("#personalStudentGroups");
   if (!target) return;

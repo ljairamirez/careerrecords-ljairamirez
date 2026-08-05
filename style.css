@@ -1566,6 +1566,51 @@ tbody tr.individual-session td:first-child {
   background: #ece7ff;
   border-color: #cbbcf5;
 }
+.personal-package-card .pill.claimed {
+  background: var(--purple);
+}
+
+.personal-receipt-panel {
+  border-color: var(--purple-line);
+  background: linear-gradient(180deg, #ffffff, #fbf8ff);
+}
+
+#personal-receipt .release-head {
+  background: linear-gradient(90deg, var(--purple-soft), #f7f2ff);
+  border-bottom-color: rgba(108, 79, 216, 0.22);
+}
+
+#personal-receipt .eyebrow {
+  color: var(--purple);
+}
+
+#personal-receipt .metric::before {
+  background: var(--purple);
+}
+
+#personal-receipt .claim-package-head td {
+  background: #ece7ff;
+  border-top-color: var(--purple);
+  border-right-color: var(--purple);
+  border-left-color: var(--purple);
+}
+
+#personal-receipt .claim-row td:last-child {
+  border-right-color: var(--purple);
+}
+
+#personal-receipt .claim-package-total td {
+  background: #f4f0ff;
+  border-bottom-color: var(--purple);
+}
+
+#personal-receipt .claim-package-total td:first-child {
+  border-left-color: var(--purple);
+}
+
+#personal-receipt .claim-package-total td:last-child {
+  border-right-color: var(--purple);
+}
 
 .records-view .panel {
   border-color: #b7dcdd;
@@ -3134,4 +3179,73 @@ tbody tr.individual-session td:first-child {
 
 .management-breakdown-item small {
   font-size: 12px;
+}
+
+@media print {
+  #personal-receipt .release-head {
+    display: none !important;
+  }
+
+  #personal-receipt.active,
+  #personal-receipt.printable.active {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  #personal-receipt .release-panel {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #personal-receipt .metric-grid.small {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    padding: 0 0 12px !important;
+  }
+
+  #personal-receipt .metric {
+    min-height: 78px !important;
+    padding: 11px 12px !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  #personal-receipt table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #personal-receipt .table-wrap {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #personal-receipt th,
+  #personal-receipt td {
+    padding: 7px 9px !important;
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+  }
+
+  #personal-receipt .claim-package-head {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  #personal-receipt .claim-row,
+  #personal-receipt .claim-package-total {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }
