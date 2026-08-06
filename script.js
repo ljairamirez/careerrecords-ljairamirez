@@ -1748,7 +1748,7 @@ function hydrateControls() {
   $("#scheduleTutor").value = "Lloyd Ramirez";
   fillSelect($("#scheduleMode"), state.settings.modes);
   fillSelect($("#scheduleFrequency"), state.settings.frequencies);
-  fillSelect($("#scheduleStatus"), state.settings.scheduleStatuses);
+  if ($("#scheduleStatus")) fillSelect($("#scheduleStatus"), state.settings.scheduleStatuses);
 
   fillSelect($("#rateTutor"), [CURRENT_RATE_TUTOR], CURRENT_RATE_TUTOR);
   fillSelect($("#rateClassType"), state.settings.classTypes);
@@ -3584,7 +3584,7 @@ function saveSchedule(event) {
     tutor: $("#scheduleTutor").value,
     mode: $("#scheduleMode").value ? normalizeModeLabel($("#scheduleMode").value) : "",
     frequency: $("#scheduleFrequency").value,
-    status: $("#scheduleStatus").value,
+    status: existing?.status || "Active",
     notes: $("#scheduleNotes").value.trim()
   };
   if (!scheduleBase.student) return;
@@ -3737,7 +3737,7 @@ function editSchedule(id) {
   $("#scheduleTutor").value = item.tutor;
   $("#scheduleMode").value = item.mode;
   $("#scheduleFrequency").value = item.frequency;
-  $("#scheduleStatus").value = item.status;
+  if ($("#scheduleStatus")) $("#scheduleStatus").value = item.status || "Active";
   $("#scheduleNotes").value = item.notes || "";
 }
 
@@ -4476,7 +4476,7 @@ function resetScheduleForm() {
   $("#scheduleStudent").value = "";
   $("#scheduleMode").value = "";
   $("#scheduleFrequency").value = "";
-  $("#scheduleStatus").value = "";
+  if ($("#scheduleStatus")) $("#scheduleStatus").value = "";
 }
 
 function setSuggestedRate({ force = false } = {}) {
@@ -4626,8 +4626,13 @@ function sessionTypeClass(session) {
 
 function scheduleTypeClass(item) {
   const typeClass = isGroupName(item.student) ? "group-session" : "individual-session";
-  const oneTime = /^one-time$/i.test(item.frequency || item.status || "");
-  return oneTime ? `${typeClass} one-time-session` : typeClass;
+  const frequency = String(item.frequency || "");
+  const status = String(item.status || "");
+  const oneTime = /^one-time$/i.test(frequency) || /^one-time$/i.test(status);
+  const asNeeded = /^as needed$/i.test(frequency);
+  if (oneTime) return `${typeClass} one-time-session`;
+  if (asNeeded) return `${typeClass} as-needed-session`;
+  return typeClass;
 }
 
 function isGroupSession(session) {
@@ -4680,10 +4685,19 @@ function packageNumber(label) {
 }
 
 function sessionRowClass(session) {
-  const classes = [sessionTypeClass(session)];
+  const classes = [sessionTypeClass(session), classTypeClass(session)].filter(Boolean);
   if (isClaimedStatus(session)) classes.push("claimed-row");
   if (isClaimingStatus(session)) classes.push("claiming-row");
   return classes.join(" ");
+}
+
+function classTypeClass(session) {
+  const type = String(session.classType || "").trim().toLowerCase();
+  if (!type || type === "group") return "";
+  if (type.includes("elem") || type.includes("jhs")) return "elem-jhs-session";
+  if (type === "shs") return "shs-session";
+  if (type.includes("college")) return "college-session";
+  return "";
 }
 
 function summarize(rows) {

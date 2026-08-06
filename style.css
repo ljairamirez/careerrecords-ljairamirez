@@ -753,6 +753,42 @@ tbody tr.individual-session td:first-child {
   border-left: 5px solid var(--blue);
 }
 
+tbody tr.elem-jhs-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session) {
+  background: #eefbff;
+}
+
+tbody tr.elem-jhs-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session):hover {
+  background: #ddf6ff;
+}
+
+tbody tr.elem-jhs-session:not(.group-session) td:first-child {
+  border-left-color: #06b6d4;
+}
+
+tbody tr.shs-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session) {
+  background: #f4efff;
+}
+
+tbody tr.shs-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session):hover {
+  background: #ece3ff;
+}
+
+tbody tr.shs-session:not(.group-session) td:first-child {
+  border-left-color: #7c3aed;
+}
+
+tbody tr.college-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session) {
+  background: #effaf5;
+}
+
+tbody tr.college-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):not(.group-session):hover {
+  background: #ddf4ea;
+}
+
+tbody tr.college-session:not(.group-session) td:first-child {
+  border-left-color: #10b981;
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
@@ -3902,5 +3938,19 @@ tbody tr.individual-session td:first-child {
 
   #claiming .claim-package-head td {
     font-size: 12px;
+  }
+}
+
+.schedule-block.as-needed-session {
+  border-left-color: #059669;
+  background: #ecfdf5;
+  box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.16), 0 5px 12px rgba(31, 44, 50, 0.1);
+}
+
+@media print {
+  .schedule-block.as-needed-session {
+    border-left-color: #059669 !important;
+    background: #ecfdf5 !important;
+    box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.16), 0 5px 12px rgba(31, 44, 50, 0.1) !important;
   }
 }
