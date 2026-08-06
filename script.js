@@ -1696,6 +1696,7 @@ function setupForms() {
 
 function setupActions() {
   $("#printView").addEventListener("click", () => window.print());
+  $("#exportImageView")?.addEventListener("click", exportCurrentViewImage);
   $("#markClaimed").addEventListener("click", confirmBefore("Claim all packages shown in Claiming View?", markClaimed));
   $("#exportSessionsCsv").addEventListener("click", () => exportCsv("session-log.csv", sessionCsvRows(sessionLogRows())));
   $("#exportPersonalCsv")?.addEventListener("click", () => exportCsv("personal-session-log.csv", sessionCsvRows(personalSessionRows())));
@@ -4974,6 +4975,98 @@ function sessionCsvRows(rows) {
 function exportCsv(filename, rows) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
   downloadFile(filename, csv, "text/csv");
+}
+
+async function exportCurrentViewImage() {
+  if (!window.html2canvas) {
+    window.alert("Image export is still loading. Please try again in a moment.");
+    return;
+  }
+  const config = imageExportTarget();
+  if (!config?.target) {
+    window.alert("Image export is available for Schedule and Claiming View.");
+    return;
+  }
+  const button = $("#exportImageView");
+  const originalTitle = button?.getAttribute("title") || "Export current view as image";
+  if (button) {
+    button.disabled = true;
+    button.setAttribute("title", "Preparing image...");
+  }
+  try {
+    const width = Math.max(config.target.scrollWidth, config.target.offsetWidth);
+    const height = Math.max(config.target.scrollHeight, config.target.offsetHeight);
+    const canvas = await window.html2canvas(config.target, {
+      backgroundColor: "#ffffff",
+      scale: Math.min(2, window.devicePixelRatio || 2),
+      useCORS: true,
+      width,
+      height,
+      windowWidth: Math.max(document.documentElement.clientWidth, width),
+      onclone: (clonedDocument) => prepareImageExportClone(clonedDocument, config)
+    });
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        window.alert("Image export failed. Please try again.");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = config.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  } catch (error) {
+    console.error("Image export failed", error);
+    window.alert("Image export failed. Please try again.");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.setAttribute("title", originalTitle);
+    }
+  }
+}
+
+function imageExportTarget() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (currentActiveView === "schedule") {
+    return {
+      target: document.querySelector("#schedule .schedule-print-panel"),
+      rootId: "schedule",
+      filename: `schedule-${today}.png`
+    };
+  }
+  if (currentActiveView === "claiming") {
+    const claimDate = $("#claimDate")?.value || today;
+    return {
+      target: document.querySelector("#claiming .release-panel"),
+      rootId: "claiming",
+      filename: `claiming-view-${claimDate}.png`
+    };
+  }
+  return null;
+}
+
+function prepareImageExportClone(clonedDocument, config) {
+  const root = clonedDocument.getElementById(config.rootId);
+  const target = config.rootId === "schedule"
+    ? root?.querySelector(".schedule-print-panel")
+    : root?.querySelector(".release-panel");
+  if (!root || !target) return;
+  root.classList.add("active");
+  target.querySelectorAll(".no-print, .claim-meta").forEach((item) => {
+    item.style.display = "none";
+  });
+  target.style.width = `${Math.max(target.scrollWidth, target.offsetWidth)}px`;
+  target.style.maxWidth = "none";
+  target.style.overflow = "visible";
+  target.querySelectorAll(".table-wrap, .week-scroll").forEach((item) => {
+    item.style.overflow = "visible";
+  });
+  target.querySelectorAll(".week-grid").forEach((item) => {
+    item.style.minWidth = `${Math.max(item.scrollWidth, item.offsetWidth)}px`;
+  });
 }
 
 function downloadFile(filename, content, type) {
