@@ -3882,7 +3882,7 @@ function managementBillTotals(bill) {
 }
 
 function renderManagementBills() {
-  if (!$("#billMetrics")) return;
+  if (!$("#billFinalSummary")) return;
   const selectedMonth = $("#billMonth")?.value || currentManagementMonth();
   if ($("#billMonth") && !$("#billMonth").value) $("#billMonth").value = selectedMonth;
   const bill = managementBillForMonth(selectedMonth) || normalizeManagementBill({ month: selectedMonth });
@@ -3892,14 +3892,7 @@ function renderManagementBills() {
     updateBillDevicePreview();
   }
   const totals = managementBillTotals(bill);
-  $("#billSummaryLabel").textContent = `${monthName(selectedMonth)} / ${bill.computedAt ? "computed" : "not computed yet"}`;
-  $("#billMetrics").innerHTML = [
-    metric("Final Bills", money(totals.total), monthName(selectedMonth), "total"),
-    metric("Rent", money(bill.rent), "fixed monthly", "earnings"),
-    metric("Utilities", money(totals.fixedUtilities), "water + base electricity + other", "unclaimed"),
-    metric("Submeters", money(totals.aircon + totals.refrigerator), `${number((bill.aircon?.usage || 0) + (bill.refrigerator?.usage || 0))} kWh`, "peak"),
-    metric("Purchases", money(totals.purchases), `${bill.purchases.length} entries`, "earnings")
-  ].join("");
+  $("#billSummaryLabel").textContent = `${monthName(selectedMonth)} / ${bill.computedAt ? "saved final" : "not saved yet"}`;
   renderBillFinalSummary(bill, totals);
   renderBillPurchaseList(bill);
   renderBillChart();
@@ -3993,8 +3986,7 @@ function renderBillPurchaseList(bill = managementBillForMonth() || normalizeMana
   const target = $("#billPurchaseList");
   if (!target) return;
   const purchases = [...(bill.purchases || [])].sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.item.localeCompare(b.item));
-  const total = sum(purchases, (purchase) => Number(purchase.amount || 0));
-  target.innerHTML = `<div class="bill-purchase-list-head"><strong>Purchases</strong><span>${money(total)}</span></div>` + (purchases.map((purchase) => `
+  target.innerHTML = `<div class="bill-purchase-list-head"><strong>Purchases</strong></div>` + (purchases.map((purchase) => `
     <article class="bill-purchase-item">
       <div><strong>${escapeHtml(purchase.item)}</strong><span>${escapeHtml(formatDate(purchase.date))}${purchase.notes ? " / " + escapeHtml(purchase.notes) : ""}</span></div>
       <strong>${money(purchase.amount)}</strong>
