@@ -2129,10 +2129,10 @@ function renderDashboard() {
   const avgEarnings = activeDays ? totals.pay / activeDays : 0;
 
   $("#dashboardMetrics").innerHTML = [
-    metric("Monthly Earnings", money(totals.pay), `${monthLabel} / ${totals.sessions} sessions`, "earnings"),
-    metric("Ready For Claiming", money(forClaiming), "closed packages waiting to claim", "unclaimed"),
-    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} / ${unclaimedSessions().length} logs`, "total"),
-    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} (${peak.sessions} sessions)` : "No sessions", "peak")
+    metric("Monthly Earnings", money(totals.pay), `${monthLabel} Â· ${countLabel(totals.sessions, "session")}`, "earnings"),
+    metric("Ready For Claiming", money(forClaiming), "Closed packages", "unclaimed"),
+    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} Â· ${countLabel(unclaimedSessions().length, "log")}`, "total"),
+    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} Â· ${countLabel(peak.sessions, "session")}` : "No sessions", "peak")
   ].join("");
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
@@ -2504,7 +2504,7 @@ function renderPackages() {
     const claimedTotal = sum(claimedPackages, (pkg) => pkg.pay);
     const claimedDropdown = claimedPackages.length
       ? `<details class="claimed-package-dropdown">
-          <summary><span>Claimed / collected packages</span><strong>${claimedPackages.length} / ${money(claimedTotal)}</strong></summary>
+          <summary><span>Collected Packages</span><strong>${claimedPackages.length} / ${money(claimedTotal)}</strong></summary>
           <div class="package-card-grid claimed-grid">${claimedCards}</div>
         </details>`
       : "";
@@ -3057,7 +3057,7 @@ function groupedPanels(key, rows, comparator = null) {
     const claimedPay = sum(claimedItems, totalPay);
     const claimedDetails = claimedItems.length
       ? `<details class="claimed-package-dropdown student-claimed-dropdown">
-          <summary><span>Claimed options</span><strong>${claimedItems.length} logs / ${money(claimedPay)}</strong></summary>
+          <summary><span>Collected Packages</span><strong>${claimedItems.length} logs / ${money(claimedPay)}</strong></summary>
           ${tableHtml(claimedItems)}
         </details>`
       : "";
@@ -5276,6 +5276,11 @@ function formatRecordPeriod(record) {
   if (!start && !record.endDate) return "";
   if (!start) return end;
   return `${start} - ${end}`;
+}
+
+function countLabel(value, singular, plural = `${singular}s`) {
+  const count = Number(value || 0);
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function metric(label, value, note, tone = "") {

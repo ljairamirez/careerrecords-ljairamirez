@@ -618,8 +618,15 @@ textarea:focus {
 
 .metric small {
   display: block;
-  margin-top: 8px;
-  color: var(--muted);
+  max-width: 100%;
+  margin-top: 9px;
+  color: #596876;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .split {
@@ -1956,6 +1963,11 @@ tbody tr.college-session:not(.group-session) td:first-child {
   .metric {
     min-height: 76px;
     padding: 12px 12px 12px 14px;
+  }
+
+  .metric small {
+    font-size: 12px;
+    white-space: normal;
   }
 
   .chart-legend {
