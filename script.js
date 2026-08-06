@@ -39,9 +39,8 @@ const MANAGEMENT_VIEW_IDS = new Set(["management"]);
 
 const PERSONAL_ACCESS_STORAGE_KEY = "career-records-personal-unlocked";
 const MANAGEMENT_ACCESS_STORAGE_KEY = "career-records-management-unlocked";
+const PERSONAL_ACCESS_HASH = "682c32838fa9f46d2abc56c74ca4db4dfc1b179d2e13d0edae318524fd24d3d3";
 const MANAGEMENT_ACCESS_HASH = "d81c16dd903dd64d1880d5c1d396bff60f25740ee8bd420bc5975223efbfea5c";
-
-const PERSONAL_ACCESS_CODE = "ljairamirez";
 
 let currentActiveView = "dashboard";
 let sessionRateManuallyEdited = false;
@@ -767,7 +766,8 @@ const defaultState = {
   records: [],
   management: {
     salaries: [],
-    allocations: []
+    allocations: [],
+    bills: []
   },
   cvProfile: buildDefaultCvProfile(),
   cvSections: buildDefaultCvSections(),
@@ -879,6 +879,7 @@ let state = loadState();
 let recentlyClaimedPackageKeys = new Set();
 let cvSelectionMode = false;
 let selectedCvItems = new Set();
+let currentManagementTab = "salary";
 let cloudSync = {
   enabled: false,
   loading: false,
@@ -1405,22 +1406,112 @@ function isPersonalUnlocked() {
   return sessionStorage.getItem(PERSONAL_ACCESS_STORAGE_KEY) === "true";
 }
 
-function requestPersonalAccess() {
+function isManagementUnlocked() {
+  return sessionStorage.getItem(MANAGEMENT_ACCESS_STORAGE_KEY) === "true";
+}
+
+async function sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function showAccessDialog({ title, message, validate, unavailableMessage }) {
+  return new Promise((resolve) => {
+    const previousActiveElement = document.activeElement;
+    const backdrop = document.createElement("div");
+    backdrop.className = "access-modal-backdrop";
+    backdrop.innerHTML = `
+      <form class="access-modal" role="dialog" aria-modal="true" aria-labelledby="accessModalTitle">
+        <p class="eyebrow">Protected Area</p>
+        <h2 id="accessModalTitle">${escapeHtml(title)}</h2>
+        <p class="access-modal-copy">${escapeHtml(message)}</p>
+        <label class="access-password-label">
+          <span>Password</span>
+          <span class="access-password-wrap">
+            <input id="accessPasswordInput" type="password" autocomplete="current-password" required>
+            <button class="access-eye-button" type="button" aria-label="Show password">Show</button>
+          </span>
+        </label>
+        <p class="access-error" id="accessError" hidden>Incorrect password.</p>
+        <div class="access-modal-actions">
+          <button class="ghost" type="button" data-access-cancel>Cancel</button>
+          <button class="primary" type="submit">Unlock</button>
+        </div>
+      </form>`;
+
+    const cleanup = (result) => {
+      document.removeEventListener("keydown", handleKeydown);
+      backdrop.remove();
+      previousActiveElement?.focus?.();
+      resolve(result);
+    };
+
+    const form = backdrop.querySelector("form");
+    const input = backdrop.querySelector("#accessPasswordInput");
+    const error = backdrop.querySelector("#accessError");
+    const submitButton = backdrop.querySelector("button[type='submit']");
+    const eyeButton = backdrop.querySelector(".access-eye-button");
+
+    const handleKeydown = (event) => {
+      if (event.key === "Escape") cleanup(false);
+    };
+
+    eyeButton.addEventListener("click", () => {
+      const isHidden = input.type === "password";
+      input.type = isHidden ? "text" : "password";
+      eyeButton.textContent = isHidden ? "Hide" : "Show";
+      eyeButton.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+      input.focus();
+    });
+
+    backdrop.querySelector("[data-access-cancel]").addEventListener("click", () => cleanup(false));
+    backdrop.addEventListener("click", (event) => {
+      if (event.target === backdrop) cleanup(false);
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      error.hidden = true;
+      submitButton.disabled = true;
+
+      try {
+        if (await validate(input.value)) {
+          input.value = "";
+          cleanup(true);
+          return;
+        }
+      } catch (error) {
+        window.alert(unavailableMessage);
+        cleanup(false);
+        return;
+      } finally {
+        submitButton.disabled = false;
+      }
+
+      input.value = "";
+      error.hidden = false;
+      input.focus();
+    });
+
+    document.body.appendChild(backdrop);
+    document.addEventListener("keydown", handleKeydown);
+    window.setTimeout(() => input.focus(), 0);
+  });
+}
+
+async function requestPersonalAccess() {
   if (isPersonalUnlocked()) return true;
 
-  const enteredPassword = window.prompt("Enter the password to access Personal records:");
+  const unlocked = await showAccessDialog({
+    title: "Personal Records",
+    message: "Enter your Personal password to continue.",
+    unavailableMessage: "Personal lock is unavailable in this browser session.",
+    validate: async (value) => await sha256Text(value) === PERSONAL_ACCESS_HASH
+  });
 
-  if (enteredPassword === null) {
-    return false;
-  }
-
-  if (enteredPassword === PERSONAL_ACCESS_CODE) {
-    sessionStorage.setItem(PERSONAL_ACCESS_STORAGE_KEY, "true");
-    return true;
-  }
-
-  window.alert("Incorrect password.");
-  return false;
+  if (unlocked) sessionStorage.setItem(PERSONAL_ACCESS_STORAGE_KEY, "true");
+  return unlocked;
 }
 
 function lockPersonalAccess() {
@@ -1433,34 +1524,18 @@ function lockPersonalAccess() {
   window.alert("Personal records have been locked.");
 }
 
-function isManagementUnlocked() {
-  return sessionStorage.getItem(MANAGEMENT_ACCESS_STORAGE_KEY) === "true";
-}
-
-async function sha256Text(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 async function requestManagementAccess() {
   if (isManagementUnlocked()) return true;
 
-  const enteredPassword = window.prompt("Enter the Management access code:");
-  if (enteredPassword === null) return false;
+  const unlocked = await showAccessDialog({
+    title: "Management",
+    message: "Enter your Management password to continue.",
+    unavailableMessage: "Management lock is unavailable in this browser session.",
+    validate: async (value) => await sha256Text(value) === MANAGEMENT_ACCESS_HASH
+  });
 
-  try {
-    if (await sha256Text(enteredPassword) === MANAGEMENT_ACCESS_HASH) {
-      sessionStorage.setItem(MANAGEMENT_ACCESS_STORAGE_KEY, "true");
-      return true;
-    }
-  } catch (error) {
-    window.alert("Management lock is unavailable in this browser session.");
-    return false;
-  }
-
-  window.alert("Incorrect access code.");
-  return false;
+  if (unlocked) sessionStorage.setItem(MANAGEMENT_ACCESS_STORAGE_KEY, "true");
+  return unlocked;
 }
 function setupNavigation() {
   const menuToggle = $("#menuToggle");
@@ -1494,7 +1569,7 @@ function setupNavigation() {
       sessionStorage.removeItem(MANAGEMENT_ACCESS_STORAGE_KEY);
     }
 
-    if (PERSONAL_VIEW_IDS.has(target) && !requestPersonalAccess()) {
+    if (PERSONAL_VIEW_IDS.has(target) && !(await requestPersonalAccess())) {
       target = "dashboard";
 
       if (location.hash !== "#dashboard") {
@@ -1599,6 +1674,15 @@ function setupForms() {
   $("#clearRecordForm")?.addEventListener("click", resetRecordForm);
   $("#managementSalaryForm")?.addEventListener("submit", saveManagementSalary);
   $("#managementAllocationForm")?.addEventListener("submit", saveManagementAllocation);
+  $("#managementBillForm")?.addEventListener("submit", saveManagementBill);
+  $("#billMonth")?.addEventListener("change", () => {
+    loadManagementBillForm($("#billMonth").value);
+    renderManagementBills();
+  });
+  $$("[data-management-tab]").forEach((button) => button.addEventListener("click", () => setManagementTab(button.dataset.managementTab)));
+  ["airconPrevious", "airconCurrent", "airconRate", "refPrevious", "refCurrent", "refRate"].forEach((id) => {
+    $("#" + id)?.addEventListener("input", updateBillDevicePreview);
+  });
   $("#managementMonth")?.addEventListener("change", () => {
     syncManagementMonthInputs();
     renderManagement();
@@ -1639,6 +1723,7 @@ function hydrateControls() {
   $("#claimDate").value ||= claimDate;
   if ($("#packageClaimDate")) $("#packageClaimDate").value ||= claimDate;
   if ($("#personalReceiptDate")) $("#personalReceiptDate").value ||= today;
+  if ($("#billMonth")) $("#billMonth").value ||= nextMonthValue(today.slice(0, 7));
   const managementMonth = today.slice(0, 7);
   if ($("#managementMonth")) $("#managementMonth").value ||= managementMonth;
   syncManagementMonthInputs();
@@ -3654,6 +3739,50 @@ function editSchedule(id) {
   $("#scheduleNotes").value = item.notes || "";
 }
 
+
+function normalizeManagementBill(bill = {}) {
+  const aircon = normalizeBillDevice(bill.aircon || bill.ac || {});
+  const refrigerator = normalizeBillDevice(bill.refrigerator || bill.ref || {});
+  return {
+    id: bill.id || uid(),
+    month: bill.month || "",
+    rent: Number(bill.rent || 0),
+    water: Number(bill.water || 0),
+    baseElectricity: Number(bill.baseElectricity || 0),
+    otherUtilities: Number(bill.otherUtilities || 0),
+    aircon,
+    refrigerator,
+    notes: bill.notes || "",
+    computedAt: bill.computedAt || ""
+  };
+}
+
+function normalizeBillDevice(device = {}) {
+  const previous = Number(device.previous || 0);
+  const current = Number(device.current || 0);
+  const rate = Number(device.rate || 0);
+  const computed = computeBillDevice(previous, current, rate);
+  return {
+    previous,
+    current,
+    rate,
+    usage: Number.isFinite(Number(device.usage)) ? Number(device.usage) : computed.usage,
+    amount: Number.isFinite(Number(device.amount)) ? Number(device.amount) : computed.amount
+  };
+}
+
+function computeBillDevice(previous, current, rate) {
+  const usage = Math.max(0, Number(current || 0) - Number(previous || 0));
+  const amount = usage * Number(rate || 0);
+  return { usage, amount };
+}
+
+function nextMonthValue(month) {
+  const base = month ? new Date(month + "-01T00:00:00") : new Date();
+  if (Number.isNaN(base.getTime())) return new Date().toISOString().slice(0, 7);
+  base.setMonth(base.getMonth() + 1);
+  return base.toISOString().slice(0, 7);
+}
 function normalizeManagementState(management = {}) {
   return {
     salaries: (management.salaries || []).map((salary) => ({
@@ -3703,6 +3832,187 @@ function managementAllocationsForMonth(month = currentManagementMonth()) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
+
+function setManagementTab(tab = "salary") {
+  currentManagementTab = tab === "bills" ? "bills" : "salary";
+  renderManagementTabs();
+}
+
+function renderManagementTabs() {
+  $$("[data-management-tab]").forEach((button) => {
+    const active = button.dataset.managementTab === currentManagementTab;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  $("#managementSalaryTab")?.classList.toggle("active", currentManagementTab === "salary");
+  $("#managementBillsTab")?.classList.toggle("active", currentManagementTab === "bills");
+}
+
+function managementBills() {
+  state.management = normalizeManagementState(state.management);
+  return state.management.bills.sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function managementBillForMonth(month = $("#billMonth")?.value || nextMonthValue(currentManagementMonth())) {
+  return managementBills().find((bill) => bill.month === month) || null;
+}
+
+function managementBillTotals(bill) {
+  const fixedUtilities = Number(bill?.water || 0) + Number(bill?.baseElectricity || 0) + Number(bill?.otherUtilities || 0);
+  const aircon = Number(bill?.aircon?.amount || 0);
+  const refrigerator = Number(bill?.refrigerator?.amount || 0);
+  const total = Number(bill?.rent || 0) + fixedUtilities + aircon + refrigerator;
+  return { fixedUtilities, aircon, refrigerator, total };
+}
+
+function renderManagementBills() {
+  if (!$("#billMetrics")) return;
+  const selectedMonth = $("#billMonth")?.value || nextMonthValue(currentManagementMonth());
+  if ($("#billMonth") && !$("#billMonth").value) $("#billMonth").value = selectedMonth;
+  const bill = managementBillForMonth(selectedMonth) || normalizeManagementBill({ month: selectedMonth });
+  if (!document.activeElement || !$("#managementBillForm")?.contains(document.activeElement)) {
+    loadManagementBillForm(selectedMonth, false);
+  } else {
+    updateBillDevicePreview();
+  }
+  const totals = managementBillTotals(bill);
+  $("#billSummaryLabel").textContent = `${monthName(selectedMonth)} / ${bill.computedAt ? "computed" : "not computed yet"}`;
+  $("#billMetrics").innerHTML = [
+    metric("Projected Bills", money(totals.total), monthName(selectedMonth), "total"),
+    metric("Rent", money(bill.rent), "fixed monthly", "earnings"),
+    metric("Utilities", money(totals.fixedUtilities), "water + base electricity + other", "unclaimed"),
+    metric("Submeters", money(totals.aircon + totals.refrigerator), `${number((bill.aircon?.usage || 0) + (bill.refrigerator?.usage || 0))} kWh`, "peak")
+  ].join("");
+  renderBillChart();
+  renderBillHistoryRows(selectedMonth);
+}
+
+function loadManagementBillForm(month, setMonth = true) {
+  if (!$("#managementBillForm")) return;
+  const targetMonth = month || $("#billMonth")?.value || nextMonthValue(currentManagementMonth());
+  const bill = managementBillForMonth(targetMonth) || normalizeManagementBill({ month: targetMonth });
+  if (setMonth && $("#billMonth")) $("#billMonth").value = targetMonth;
+  setInputValue("billRent", bill.rent);
+  setInputValue("billWater", bill.water);
+  setInputValue("billBaseElectricity", bill.baseElectricity);
+  setInputValue("billOtherUtilities", bill.otherUtilities);
+  setInputValue("airconPrevious", bill.aircon.previous);
+  setInputValue("airconCurrent", bill.aircon.current);
+  setInputValue("airconRate", bill.aircon.rate);
+  setInputValue("refPrevious", bill.refrigerator.previous);
+  setInputValue("refCurrent", bill.refrigerator.current);
+  setInputValue("refRate", bill.refrigerator.rate);
+  if ($("#billNotes")) $("#billNotes").value = bill.notes || "";
+  updateBillDevicePreview();
+}
+
+function setInputValue(id, value) {
+  const input = $("#" + id);
+  if (input) input.value = Number(value || 0) || "";
+}
+
+function readManagementBillForm() {
+  const aircon = computeBillDevice($("#airconPrevious").value, $("#airconCurrent").value, $("#airconRate").value);
+  const refrigerator = computeBillDevice($("#refPrevious").value, $("#refCurrent").value, $("#refRate").value);
+  const month = $("#billMonth").value || nextMonthValue(currentManagementMonth());
+  const existing = managementBillForMonth(month);
+  return {
+    id: existing?.id || uid(),
+    month,
+    rent: Number($("#billRent").value || 0),
+    water: Number($("#billWater").value || 0),
+    baseElectricity: Number($("#billBaseElectricity").value || 0),
+    otherUtilities: Number($("#billOtherUtilities").value || 0),
+    aircon: {
+      previous: Number($("#airconPrevious").value || 0),
+      current: Number($("#airconCurrent").value || 0),
+      rate: Number($("#airconRate").value || 0),
+      ...aircon
+    },
+    refrigerator: {
+      previous: Number($("#refPrevious").value || 0),
+      current: Number($("#refCurrent").value || 0),
+      rate: Number($("#refRate").value || 0),
+      ...refrigerator
+    },
+    notes: $("#billNotes").value.trim(),
+    computedAt: new Date().toISOString()
+  };
+}
+
+function updateBillDevicePreview() {
+  const aircon = computeBillDevice($("#airconPrevious")?.value, $("#airconCurrent")?.value, $("#airconRate")?.value);
+  const refrigerator = computeBillDevice($("#refPrevious")?.value, $("#refCurrent")?.value, $("#refRate")?.value);
+  if ($("#airconResult")) $("#airconResult").textContent = `${number(aircon.usage)} kWh / ${money(aircon.amount)}`;
+  if ($("#refResult")) $("#refResult").textContent = `${number(refrigerator.usage)} kWh / ${money(refrigerator.amount)}`;
+}
+
+function saveManagementBill(event) {
+  event.preventDefault();
+  state.management = normalizeManagementState(state.management);
+  const bill = normalizeManagementBill(readManagementBillForm());
+  upsertManagementItem("bills", bill);
+  if ($("#billMonth")) $("#billMonth").value = bill.month;
+  saveState();
+  renderManagement();
+}
+
+function renderBillChart() {
+  const target = $("#billChart");
+  if (!target) return;
+  const bills = managementBills().slice(-12);
+  if (!bills.length) {
+    target.innerHTML = `<p class="empty">No bill records yet.</p>`;
+    return;
+  }
+  const maxTotal = Math.max(1, ...bills.map((bill) => managementBillTotals(bill).total));
+  target.innerHTML = bills.map((bill) => {
+    const totals = managementBillTotals(bill);
+    const height = Math.max(8, (totals.total / maxTotal) * 140);
+    const rentPct = totals.total ? (bill.rent / totals.total) * 100 : 0;
+    const utilitiesPct = totals.total ? (totals.fixedUtilities / totals.total) * 100 : 0;
+    const airconPct = totals.total ? (totals.aircon / totals.total) * 100 : 0;
+    const refPct = totals.total ? (totals.refrigerator / totals.total) * 100 : 0;
+    const title = `${monthName(bill.month)}\nTotal: ${money(totals.total)}\nRent: ${money(bill.rent)}\nUtilities: ${money(totals.fixedUtilities)}\nAircon: ${money(totals.aircon)}\nRefrigerator: ${money(totals.refrigerator)}`;
+    return `<article class="bill-bar" title="${escapeAttr(title)}" tabindex="0">
+      <span class="bill-bar-value">${money(totals.total).replace("PHP ", "")}</span>
+      <div class="bill-bar-stack" style="height:${height}px">
+        <span class="bill-segment rent" style="height:${rentPct}%"></span>
+        <span class="bill-segment utilities" style="height:${utilitiesPct}%"></span>
+        <span class="bill-segment aircon" style="height:${airconPct}%"></span>
+        <span class="bill-segment ref" style="height:${refPct}%"></span>
+      </div>
+      <strong>${monthName(bill.month, true)}</strong>
+    </article>`;
+  }).join("");
+}
+
+function renderBillHistoryRows(selectedMonth) {
+  const target = $("#billHistoryRows");
+  if (!target) return;
+  const bills = [...managementBills()].sort((a, b) => b.month.localeCompare(a.month));
+  target.innerHTML = bills.map((bill) => {
+    const totals = managementBillTotals(bill);
+    const active = bill.month === selectedMonth ? " class=\"selected-row\"" : "";
+    return `<tr${active}><td>${escapeHtml(monthName(bill.month))}</td><td>${money(bill.rent)}</td><td>${money(totals.fixedUtilities)}</td><td>${money(totals.aircon)}</td><td>${money(totals.refrigerator)}</td><td>${money(totals.total)}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-bill="${escapeAttr(bill.month)}">Edit</button><button class="mini" type="button" data-delete-management-bill="${escapeAttr(bill.id)}">Delete</button></div></td></tr>`;
+  }).join("") || emptyRow(7);
+}
+
+function bindManagementBillRowActions() {
+  $$('[data-edit-management-bill]').forEach((button) => button.addEventListener("click", () => {
+    setManagementTab("bills");
+    loadManagementBillForm(button.dataset.editManagementBill);
+    renderManagementBills();
+  }));
+  $$('[data-delete-management-bill]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this monthly bill record?", () => deleteManagementBill(button.dataset.deleteManagementBill))));
+}
+
+function deleteManagementBill(id) {
+  state.management = normalizeManagementState(state.management);
+  state.management.bills = state.management.bills.filter((bill) => bill.id !== id);
+  saveState();
+  renderManagement();
+}
 function renderManagement() {
   if (!$("#managementMetrics")) return;
   state.management = normalizeManagementState(state.management);

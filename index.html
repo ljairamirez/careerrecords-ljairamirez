@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=58">
+  <link rel="stylesheet" href="style.css?v=61">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -632,64 +632,111 @@
         </div>
         <label><span>Month</span><input id="managementMonth" type="month"></label>
       </section>
-      <div class="metric-grid management-metrics" id="managementMetrics"></div>
-      <section class="panel management-panel management-breakdown-panel">
-        <div class="panel-head">
-          <h2>Selected Month Breakdown</h2>
-          <span id="managementBreakdownMonth"></span>
-        </div>
-        <div class="management-breakdown-body">
-          <div class="management-pie-wrap" id="managementPie"></div>
-          <div class="management-breakdown-list" id="managementBreakdownList"></div>
-        </div>
-      </section>
-      <div class="management-layout">
-        <section class="panel form-panel management-panel">
+      <div class="management-tabs" role="tablist" aria-label="Management sections">
+        <button class="management-tab active" type="button" data-management-tab="salary">Salary Plan</button>
+        <button class="management-tab" type="button" data-management-tab="bills">Next Month Bills</button>
+      </div>
+      <div class="management-tab-panel active" id="managementSalaryTab">
+        <div class="metric-grid management-metrics" id="managementMetrics"></div>
+        <section class="panel management-panel management-breakdown-panel">
           <div class="panel-head">
-            <h2>Salary Log</h2>
-            <button class="ghost" id="clearManagementSalary" type="button">Clear</button>
+            <h2>Selected Month Breakdown</h2>
+            <span id="managementBreakdownMonth"></span>
           </div>
-          <form class="grid-form management-form" id="managementSalaryForm">
-            <input type="hidden" id="managementSalaryId">
-            <label><span>Month</span><input id="salaryMonth" type="month" required></label>
-            <label><span>Gross Salary</span><input id="salaryGross" type="number" min="0" step="0.01" required></label>
-            <label><span>Less Tax (%)</span><input id="salaryTaxPercent" type="number" min="0" max="100" step="0.01" value="0"></label>
-            <label class="wide"><span>Notes</span><input id="salaryNotes" type="text" placeholder="Optional"></label>
-            <button class="primary management-primary" type="submit">Save Salary</button>
-          </form>
+          <div class="management-breakdown-body">
+            <div class="management-pie-wrap" id="managementPie"></div>
+            <div class="management-breakdown-list" id="managementBreakdownList"></div>
+          </div>
         </section>
-        <section class="panel form-panel management-panel">
+        <div class="management-layout">
+          <section class="panel form-panel management-panel">
+            <div class="panel-head">
+              <h2>Salary Log</h2>
+              <button class="ghost" id="clearManagementSalary" type="button">Clear</button>
+            </div>
+            <form class="grid-form management-form" id="managementSalaryForm">
+              <input type="hidden" id="managementSalaryId">
+              <label><span>Month</span><input id="salaryMonth" type="month" required></label>
+              <label><span>Gross Salary</span><input id="salaryGross" type="number" min="0" step="0.01" required></label>
+              <label><span>Less Tax (%)</span><input id="salaryTaxPercent" type="number" min="0" max="100" step="0.01" value="0"></label>
+              <label class="wide"><span>Notes</span><input id="salaryNotes" type="text" placeholder="Optional"></label>
+              <button class="primary management-primary" type="submit">Save Salary</button>
+            </form>
+          </section>
+          <section class="panel form-panel management-panel">
+            <div class="panel-head">
+              <h2>Allocation</h2>
+              <button class="ghost" id="clearManagementAllocation" type="button">Clear</button>
+            </div>
+            <form class="grid-form management-form" id="managementAllocationForm">
+              <input type="hidden" id="managementAllocationId">
+              <label><span>Month</span><input id="allocationMonth" type="month" required></label>
+              <label><span>Segment</span><input id="allocationName" type="text" required placeholder="Savings, trip, bills"></label>
+              <label><span>Net Income (%)</span><input id="allocationPercent" type="number" min="0" max="100" step="0.01" required></label>
+              <label class="wide"><span>Notes</span><input id="allocationNotes" type="text" placeholder="Optional"></label>
+              <button class="primary management-primary" type="submit">Save Allocation</button>
+            </form>
+          </section>
+        </div>
+        <section class="panel management-panel management-history-panel">
           <div class="panel-head">
-            <h2>Allocation</h2>
-            <button class="ghost" id="clearManagementAllocation" type="button">Clear</button>
+            <h2>Monthly Breakdown</h2>
+            <span>Grouped by month</span>
           </div>
-          <form class="grid-form management-form" id="managementAllocationForm">
-            <input type="hidden" id="managementAllocationId">
-            <label><span>Month</span><input id="allocationMonth" type="month" required></label>
-            <label><span>Segment</span><input id="allocationName" type="text" required placeholder="Savings, trip, bills"></label>
-            <label><span>Net Income (%)</span><input id="allocationPercent" type="number" min="0" max="100" step="0.01" required></label>
-            <label class="wide"><span>Notes</span><input id="allocationNotes" type="text" placeholder="Optional"></label>
-            <button class="primary management-primary" type="submit">Save Allocation</button>
-          </form>
+          <div class="management-month-groups" id="managementMonthGroups"></div>
         </section>
       </div>
-      <section class="panel management-panel management-history-panel">
-        <div class="panel-head">
-          <h2>Monthly Breakdown</h2>
-          <span>Grouped by month</span>
-        </div>
-        <div class="management-month-groups" id="managementMonthGroups"></div>
-      </section>
+      <div class="management-tab-panel" id="managementBillsTab">
+        <section class="panel management-panel bills-panel">
+          <div class="panel-head">
+            <h2>Following Month Bills</h2>
+            <span id="billSummaryLabel">Saved per month</span>
+          </div>
+          <form class="grid-form bill-form" id="managementBillForm">
+            <label><span>Bill Month</span><input id="billMonth" type="month" required></label>
+            <label><span>Rent</span><input id="billRent" type="number" min="0" step="0.01" placeholder="0"></label>
+            <label><span>Water</span><input id="billWater" type="number" min="0" step="0.01" placeholder="0"></label>
+            <label><span>Base Electricity</span><input id="billBaseElectricity" type="number" min="0" step="0.01" placeholder="0"></label>
+            <label><span>Other Utilities</span><input id="billOtherUtilities" type="number" min="0" step="0.01" placeholder="0"></label>
+            <label class="wide"><span>Notes</span><input id="billNotes" type="text" placeholder="Optional"></label>
+            <section class="bill-device-card">
+              <h3>Airconditioner Submeter</h3>
+              <label><span>Previous Reading</span><input id="airconPrevious" type="number" min="0" step="0.01"></label>
+              <label><span>Current Reading</span><input id="airconCurrent" type="number" min="0" step="0.01"></label>
+              <label><span>kWh Rate</span><input id="airconRate" type="number" min="0" step="0.01"></label>
+              <div class="bill-device-result" id="airconResult">0 kWh / PHP 0.00</div>
+            </section>
+            <section class="bill-device-card">
+              <h3>Refrigerator Submeter</h3>
+              <label><span>Previous Reading</span><input id="refPrevious" type="number" min="0" step="0.01"></label>
+              <label><span>Current Reading</span><input id="refCurrent" type="number" min="0" step="0.01"></label>
+              <label><span>kWh Rate</span><input id="refRate" type="number" min="0" step="0.01"></label>
+              <div class="bill-device-result" id="refResult">0 kWh / PHP 0.00</div>
+            </section>
+            <button class="primary management-primary bill-compute-button" type="submit">Compute Bills</button>
+          </form>
+        </section>
+        <div class="metric-grid management-metrics bill-metrics" id="billMetrics"></div>
+        <section class="panel management-panel bill-chart-panel">
+          <div class="panel-head">
+            <h2>Bills History</h2>
+            <span>Rent, utilities, aircon, and refrigerator</span>
+          </div>
+          <div class="bill-chart-legend" aria-label="Bill chart legend"><span><i class="rent"></i>Rent</span><span><i class="utilities"></i>Utilities</span><span><i class="aircon"></i>Aircon</span><span><i class="ref"></i>Refrigerator</span></div>
+          <div class="bill-chart" id="billChart"></div>
+          <div class="table-wrap compact-table">
+            <table>
+              <thead><tr><th>Month</th><th>Rent</th><th>Utilities</th><th>Aircon</th><th>Refrigerator</th><th>Total</th><th></th></tr></thead>
+              <tbody id="billHistoryRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </section>
   </main>
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=117"></script>
+  <script src="script.js?v=119"></script>
 </body>
 </html>
-
-
-
-
-
