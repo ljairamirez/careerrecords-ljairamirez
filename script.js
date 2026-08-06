@@ -2303,7 +2303,7 @@ function personalPackageCardHtml(pkg) {
   const pillClass = claimed ? "claimed" : closed ? "claimed" : "pending";
   return `<article class="package-card personal-package-card ${stateClass}">
     <label class="package-select"><input type="checkbox" class="personal-package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
-    <div class="package-stats"><span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs</span><span>${money(pkg.pay)}</span></div>
+    <div class="package-stats"><span>${pkg.sessions.length} logs</span><span aria-hidden="true">&middot;</span><span>${number(pkg.hours)} hrs</span><strong>${money(pkg.pay)}</strong></div>
     <span class="pill ${pillClass}">${stateLabel}</span>
   </article>`;
 }
@@ -2519,10 +2519,7 @@ function packageCardHtml(pkg) {
   const claimAnimation = recentlyClaimedPackageKeys.has(pkg.key) ? " payroll-claimed-flash" : "";
   return `<article class="package-card ${packageState.className}${claimAnimation}" data-package-key="${escapeAttr(pkg.key)}">
     <label class="package-select"><input type="checkbox" class="package-check" value="${escapeAttr(pkg.key)}"><span>${escapeHtml(pkg.label)}</span></label>
-    <div class="package-stats">
-      <span>${pkg.sessions.length} logs &middot; ${number(pkg.hours)} hrs</span>
-      <span>${money(pkg.pay)}</span>
-    </div>
+    <div class="package-stats"><span>${pkg.sessions.length} logs</span><span aria-hidden="true">&middot;</span><span>${number(pkg.hours)} hrs</span><strong>${money(pkg.pay)}</strong></div>
     <span class="pill ${packageState.pillClass}">${packageState.label}</span>
   </article>`;
 }

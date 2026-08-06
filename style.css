@@ -3469,3 +3469,239 @@ tbody tr.college-session:not(.group-session) td:first-child {
     box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.16), 0 5px 12px rgba(31, 44, 50, 0.1) !important;
   }
 }
+
+/* Package card readability repair */
+.package-card .package-select {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text);
+}
+
+.package-card .package-select input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+
+.package-card .package-select span {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.package-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  color: #51616b;
+  font-size: 13px;
+  line-height: 1.22;
+}
+
+.package-stats strong {
+  flex-basis: 100%;
+  color: #26343c;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.claimed-package-dropdown {
+  border-top: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.claimed-package-dropdown summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.25;
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.claimed-package-dropdown summary span {
+  min-width: 0;
+}
+
+.claimed-package-dropdown summary strong {
+  flex-shrink: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.claimed-package-dropdown .package-card-grid,
+.claimed-package-dropdown .table-wrap {
+  padding-top: 0;
+}
+/* Career document base layout repair */
+.document-page {
+  max-width: 8.5in;
+  margin: 0 auto 28px;
+  padding: 38px 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.document-head {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-top: 8px solid #00747c;
+  text-align: center;
+}
+
+.document-head h2 {
+  margin: 8px 0 0;
+  color: #0f172a;
+  font-size: 26px;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.document-contact,
+.document-place {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.document-section {
+  margin-top: 18px;
+  padding: 0;
+  break-inside: avoid;
+}
+
+.document-section h3 {
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #111827;
+  color: #0052cc;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.document-items {
+  display: grid;
+  gap: 10px;
+}
+
+.document-item {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.document-item-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.document-item-body {
+  min-width: 0;
+}
+
+.document-item-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.document-item-title strong,
+.document-item-title span {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.document-item-title span {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.document-item-meta,
+.document-item-description,
+.document-inline-details p,
+.document-item p,
+.document-item li {
+  margin: 2px 0;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.document-item-meta,
+.document-item-description.is-italic {
+  font-style: italic;
+}
+
+.document-item ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.document-item li {
+  padding-left: 2px;
+}
+
+.document-inline-details {
+  display: grid;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+.cv-edit-button {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.document-item:hover .cv-edit-button,
+.cv-selecting .cv-edit-button {
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .document-page {
+    padding: 18px;
+  }
+
+  .document-head h2 {
+    font-size: 22px;
+  }
+
+  .document-item-title {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .document-item-title span {
+    text-align: left;
+    white-space: normal;
+  }
+}
