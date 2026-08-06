@@ -753,7 +753,7 @@ const defaultState = {
       "Elliot", "Margo", "LEAP 6", "B2030 G9", "BOOSTER STAT",
       "BOARDS REVIEW", "ASHAPE", "NCE"
     ],
-    packages: ["5 Hours", "10 Hours", "15 Hours", "Group 3 Students", "Group 4 Students", "Group 5-9 Students", "Group 10+ Students"],
+    packages: ["5 Hours", "10 Hours", "15 Hours", "Pair (SB)", "Trio (SB)", "Group (4)", "Group (5-9)", "Group (10+)"],
     classTypes: ["Elem/JHS", "SHS", "College", "Group"],
     modes: ["Virtual", "F2F", "Hybrid"],
     frequencies: ["Weekly", "Twice a week", "One-time", "As needed"],
@@ -980,8 +980,8 @@ function buildInitialState() {
 
 function ensureStudyBuddyRates(targetState) {
   targetState.settings ||= structuredClone(defaultState.settings);
-  targetState.settings.packages = uniqueDisplayValues([
-    ...(targetState.settings.packages || []).map((packageName) => packageName === "Group (5 and up)" ? "Group (5-9)" : packageName),
+  targetState.settings.packages = normalizePackageOptions([
+    ...(targetState.settings.packages || []),
     ...studyBuddyRatePackages.map((rate) => rate.packageName)
   ]);
   targetState.rates ||= [];
@@ -3428,6 +3428,11 @@ function saveSession(event) {
   ensureStudent(studentName);
   const hours = Number($("#sessionHours").value || 0);
   const rate = Number($("#sessionRate").value || 0);
+  const selectedPackageName = $("#sessionPackage").value;
+  const selectedClassType = $("#sessionClassType").value;
+  const studentCount = existing && existing.packageName === selectedPackageName && existing.classType === selectedClassType
+    ? Number(existing.studentCount || inferStudentCountFromPackage(selectedPackageName, selectedClassType))
+    : inferStudentCountFromPackage(selectedPackageName, selectedClassType);
   const session = {
     id,
     date: $("#sessionDate").value,
@@ -3436,11 +3441,11 @@ function saveSession(event) {
     timeText: `${$("#sessionStart").value}-${$("#sessionEnd").value}`,
     tutor: $("#sessionTutor").value,
     student: studentName,
-    packageName: $("#sessionPackage").value,
+    packageName: selectedPackageName,
     packageLabel: $("#sessionClaimPackage").value || "Package 1",
-    classType: $("#sessionClassType").value,
+    classType: selectedClassType,
     mode: $("#sessionMode").value ? normalizeModeLabel($("#sessionMode").value) : "",
-    studentCount: Number($("#sessionStudents").value || 1),
+    studentCount,
     hours,
     rate,
     totalPay: hours * rate,
@@ -3612,7 +3617,7 @@ function saveSettings(event) {
   applyStudentSettingRenames(previousStudents, editedStudents);
   state.settings.students = nextStudents;
   syncStudentRecords();
-  state.settings.packages = parseLines($("#settingPackages").value);
+  state.settings.packages = normalizePackageOptions(parseLines($("#settingPackages").value));
   state.settings.classTypes = parseLines($("#settingClassTypes").value);
   state.settings.modes = ["Virtual", "F2F", "Hybrid"];
   state.settings.scheduleStatuses = parseLines($("#settingScheduleStatuses").value);
@@ -3672,7 +3677,7 @@ function editSession(id) {
   $("#sessionClaimPackage").value = session.packageLabel || session.packageName || "";
   $("#sessionClassType").value = session.classType;
   $("#sessionMode").value = session.mode;
-  $("#sessionStudents").value = session.studentCount;
+  if ($("#sessionStudents")) $("#sessionStudents").value = session.studentCount;
   $("#sessionRate").value = session.rate;
   $("#sessionHours").value = totalHours(session) || "";
   $("#sessionNotes").value = session.notes || "";
@@ -4427,7 +4432,7 @@ function resetSessionForm() {
   $("#sessionDate").value = new Date().toISOString().slice(0, 10);
   $("#sessionStart").value = DEFAULT_SESSION_START_TIME;
   $("#sessionEnd").value = "";
-  $("#sessionStudents").value = 1;
+  if ($("#sessionStudents")) $("#sessionStudents").value = 1;
   $("#sessionHours").value = "";
   $("#sessionStudent").value = "";
   $("#sessionPackage").value = "";
@@ -4763,6 +4768,24 @@ function sum(rows, getter) {
 
 function parseLines(value) {
   return value.split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizePackageOptions(values) {
+  const packages = values
+    .map((packageName) => packageName === "Group (5 and up)" ? "Group (5-9)" : packageName)
+    .filter((packageName) => !/^Group\s+(?:3|4|5-9|10\+)\s+Students$/i.test(String(packageName || "")));
+  return uniqueDisplayValues(packages);
+}
+
+function inferStudentCountFromPackage(packageName, classType = "") {
+  const text = String(packageName || "").toLowerCase();
+  if (/pair/.test(text)) return 2;
+  if (/trio/.test(text)) return 3;
+  if (/group\s*\(?4\)?/.test(text)) return 4;
+  if (/5\s*-\s*9/.test(text)) return 5;
+  if (/10\s*\+/.test(text)) return 10;
+  if (/\bgroup\b/.test(String(classType || "").toLowerCase())) return 2;
+  return 1;
 }
 
 function parseBulletLines(value) {
