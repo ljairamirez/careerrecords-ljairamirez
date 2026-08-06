@@ -1683,6 +1683,8 @@ function setupForms() {
   ["airconPrevious", "airconCurrent", "airconRate", "refPrevious", "refCurrent", "refRate"].forEach((id) => {
     $("#" + id)?.addEventListener("input", updateBillDevicePreview);
   });
+  $("#saveBillPurchase")?.addEventListener("click", saveBillPurchase);
+  $("#clearBillPurchase")?.addEventListener("click", resetBillPurchaseForm);
   $("#managementMonth")?.addEventListener("change", () => {
     syncManagementMonthInputs();
     renderManagement();
@@ -3752,6 +3754,7 @@ function normalizeManagementBill(bill = {}) {
     otherUtilities: Number(bill.otherUtilities || 0),
     aircon,
     refrigerator,
+    purchases: (bill.purchases || bill.groceries || []).map(normalizeBillPurchase),
     notes: bill.notes || "",
     computedAt: bill.computedAt || ""
   };
@@ -3783,6 +3786,15 @@ function nextMonthValue(month) {
   base.setMonth(base.getMonth() + 1);
   return base.toISOString().slice(0, 7);
 }
+function normalizeBillPurchase(purchase = {}) {
+  return {
+    id: purchase.id || uid(),
+    date: purchase.date || "",
+    item: purchase.item || purchase.name || "Purchase",
+    amount: Number(purchase.amount || 0),
+    notes: purchase.notes || ""
+  };
+}
 function normalizeManagementState(management = {}) {
   return {
     salaries: (management.salaries || []).map((salary) => ({
@@ -3798,7 +3810,8 @@ function normalizeManagementState(management = {}) {
       name: allocation.name || "",
       percent: Number(allocation.percent || 0),
       notes: allocation.notes || ""
-    }))
+    })),
+    bills: (management.bills || []).map(normalizeManagementBill)
   };
 }
 
@@ -3810,6 +3823,8 @@ function syncManagementMonthInputs() {
   const month = currentManagementMonth();
   if ($("#salaryMonth")) $("#salaryMonth").value ||= month;
   if ($("#allocationMonth")) $("#allocationMonth").value ||= month;
+  if ($("#billMonth")) $("#billMonth").value = month;
+  loadManagementBillForm(month, false);
 }
 
 function managementSalaryForMonth(month = currentManagementMonth()) {
@@ -3853,7 +3868,7 @@ function managementBills() {
   return state.management.bills.sort((a, b) => a.month.localeCompare(b.month));
 }
 
-function managementBillForMonth(month = $("#billMonth")?.value || nextMonthValue(currentManagementMonth())) {
+function managementBillForMonth(month = $("#billMonth")?.value || currentManagementMonth()) {
   return managementBills().find((bill) => bill.month === month) || null;
 }
 
@@ -3861,13 +3876,14 @@ function managementBillTotals(bill) {
   const fixedUtilities = Number(bill?.water || 0) + Number(bill?.baseElectricity || 0) + Number(bill?.otherUtilities || 0);
   const aircon = Number(bill?.aircon?.amount || 0);
   const refrigerator = Number(bill?.refrigerator?.amount || 0);
-  const total = Number(bill?.rent || 0) + fixedUtilities + aircon + refrigerator;
-  return { fixedUtilities, aircon, refrigerator, total };
+  const purchases = sum(bill?.purchases || [], (purchase) => Number(purchase.amount || 0));
+  const total = Number(bill?.rent || 0) + fixedUtilities + aircon + refrigerator + purchases;
+  return { fixedUtilities, aircon, refrigerator, purchases, total };
 }
 
 function renderManagementBills() {
   if (!$("#billMetrics")) return;
-  const selectedMonth = $("#billMonth")?.value || nextMonthValue(currentManagementMonth());
+  const selectedMonth = $("#billMonth")?.value || currentManagementMonth();
   if ($("#billMonth") && !$("#billMonth").value) $("#billMonth").value = selectedMonth;
   const bill = managementBillForMonth(selectedMonth) || normalizeManagementBill({ month: selectedMonth });
   if (!document.activeElement || !$("#managementBillForm")?.contains(document.activeElement)) {
@@ -3878,18 +3894,21 @@ function renderManagementBills() {
   const totals = managementBillTotals(bill);
   $("#billSummaryLabel").textContent = `${monthName(selectedMonth)} / ${bill.computedAt ? "computed" : "not computed yet"}`;
   $("#billMetrics").innerHTML = [
-    metric("Projected Bills", money(totals.total), monthName(selectedMonth), "total"),
+    metric("Final Bills", money(totals.total), monthName(selectedMonth), "total"),
     metric("Rent", money(bill.rent), "fixed monthly", "earnings"),
     metric("Utilities", money(totals.fixedUtilities), "water + base electricity + other", "unclaimed"),
-    metric("Submeters", money(totals.aircon + totals.refrigerator), `${number((bill.aircon?.usage || 0) + (bill.refrigerator?.usage || 0))} kWh`, "peak")
+    metric("Submeters", money(totals.aircon + totals.refrigerator), `${number((bill.aircon?.usage || 0) + (bill.refrigerator?.usage || 0))} kWh`, "peak"),
+    metric("Purchases", money(totals.purchases), `${bill.purchases.length} entries`, "earnings")
   ].join("");
+  renderBillFinalSummary(bill, totals);
+  renderBillPurchaseList(bill);
   renderBillChart();
   renderBillHistoryRows(selectedMonth);
 }
 
 function loadManagementBillForm(month, setMonth = true) {
   if (!$("#managementBillForm")) return;
-  const targetMonth = month || $("#billMonth")?.value || nextMonthValue(currentManagementMonth());
+  const targetMonth = month || $("#billMonth")?.value || currentManagementMonth();
   const bill = managementBillForMonth(targetMonth) || normalizeManagementBill({ month: targetMonth });
   if (setMonth && $("#billMonth")) $("#billMonth").value = targetMonth;
   setInputValue("billRent", bill.rent);
@@ -3903,6 +3922,8 @@ function loadManagementBillForm(month, setMonth = true) {
   setInputValue("refCurrent", bill.refrigerator.current);
   setInputValue("refRate", bill.refrigerator.rate);
   if ($("#billNotes")) $("#billNotes").value = bill.notes || "";
+  renderBillPurchaseList(bill);
+  resetBillPurchaseForm(false);
   updateBillDevicePreview();
 }
 
@@ -3914,7 +3935,7 @@ function setInputValue(id, value) {
 function readManagementBillForm() {
   const aircon = computeBillDevice($("#airconPrevious").value, $("#airconCurrent").value, $("#airconRate").value);
   const refrigerator = computeBillDevice($("#refPrevious").value, $("#refCurrent").value, $("#refRate").value);
-  const month = $("#billMonth").value || nextMonthValue(currentManagementMonth());
+  const month = $("#billMonth").value || currentManagementMonth();
   const existing = managementBillForMonth(month);
   return {
     id: existing?.id || uid(),
@@ -3935,6 +3956,7 @@ function readManagementBillForm() {
       rate: Number($("#refRate").value || 0),
       ...refrigerator
     },
+    purchases: existing?.purchases || [],
     notes: $("#billNotes").value.trim(),
     computedAt: new Date().toISOString()
   };
@@ -3947,6 +3969,103 @@ function updateBillDevicePreview() {
   if ($("#refResult")) $("#refResult").textContent = `${number(refrigerator.usage)} kWh / ${money(refrigerator.amount)}`;
 }
 
+function renderBillFinalSummary(bill, totals = managementBillTotals(bill)) {
+  const target = $("#billFinalSummary");
+  if (!target) return;
+  if ($("#billFinalMonth")) $("#billFinalMonth").textContent = monthName(bill.month || currentManagementMonth());
+  const purchaseRows = (bill.purchases || []).map((purchase) => `
+    <tr><td>${escapeHtml(formatDate(purchase.date))}</td><td>${escapeHtml(purchase.item)}</td><td>${money(purchase.amount)}</td><td>${escapeHtml(purchase.notes || "")}</td></tr>`).join("");
+  target.innerHTML = `
+    <div class="bill-final-grid">
+      <div><span>Rent</span><strong>${money(bill.rent)}</strong></div>
+      <div><span>Utilities</span><strong>${money(totals.fixedUtilities)}</strong></div>
+      <div><span>Aircon</span><strong>${money(totals.aircon)}</strong><small>${number(bill.aircon?.usage || 0)} kWh</small></div>
+      <div><span>Refrigerator</span><strong>${money(totals.refrigerator)}</strong><small>${number(bill.refrigerator?.usage || 0)} kWh</small></div>
+      <div><span>Purchases</span><strong>${money(totals.purchases)}</strong><small>${(bill.purchases || []).length} entries</small></div>
+      <div class="bill-final-total"><span>Total</span><strong>${money(totals.total)}</strong></div>
+    </div>
+    <div class="table-wrap compact-table bill-purchase-summary">
+      <table><thead><tr><th>Date</th><th>Purchase</th><th>Amount</th><th>Notes</th></tr></thead><tbody>${purchaseRows || emptyRow(4)}</tbody></table>
+    </div>`;
+}
+
+function renderBillPurchaseList(bill = managementBillForMonth() || normalizeManagementBill({ month: currentManagementMonth() })) {
+  const target = $("#billPurchaseList");
+  if (!target) return;
+  const purchases = [...(bill.purchases || [])].sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.item.localeCompare(b.item));
+  const total = sum(purchases, (purchase) => Number(purchase.amount || 0));
+  target.innerHTML = `<div class="bill-purchase-list-head"><strong>Purchases</strong><span>${money(total)}</span></div>` + (purchases.map((purchase) => `
+    <article class="bill-purchase-item">
+      <div><strong>${escapeHtml(purchase.item)}</strong><span>${escapeHtml(formatDate(purchase.date))}${purchase.notes ? " / " + escapeHtml(purchase.notes) : ""}</span></div>
+      <strong>${money(purchase.amount)}</strong>
+      <div class="row-actions"><button class="mini" type="button" data-edit-bill-purchase="${escapeAttr(purchase.id)}">Edit</button><button class="mini" type="button" data-delete-bill-purchase="${escapeAttr(purchase.id)}">Delete</button></div>
+    </article>`).join("") || `<p class="empty">No purchases yet.</p>`);
+  bindBillPurchaseActions();
+}
+
+function resetBillPurchaseForm(clearDate = true) {
+  if ($("#billPurchaseId")) $("#billPurchaseId").value = "";
+  if ($("#billPurchaseItem")) $("#billPurchaseItem").value = "";
+  if ($("#billPurchaseAmount")) $("#billPurchaseAmount").value = "";
+  if ($("#billPurchaseNotes")) $("#billPurchaseNotes").value = "";
+  if (clearDate && $("#billPurchaseDate")) $("#billPurchaseDate").value = new Date().toISOString().slice(0, 10);
+}
+
+function readBillPurchaseForm() {
+  return normalizeBillPurchase({
+    id: $("#billPurchaseId")?.value || uid(),
+    date: $("#billPurchaseDate")?.value || new Date().toISOString().slice(0, 10),
+    item: $("#billPurchaseItem")?.value.trim() || "Purchase",
+    amount: Number($("#billPurchaseAmount")?.value || 0),
+    notes: $("#billPurchaseNotes")?.value.trim() || ""
+  });
+}
+
+function saveBillPurchase() {
+  state.management = normalizeManagementState(state.management);
+  const month = $("#billMonth")?.value || currentManagementMonth();
+  const bill = normalizeManagementBill(readManagementBillForm());
+  const purchase = readBillPurchaseForm();
+  const index = bill.purchases.findIndex((item) => item.id === purchase.id);
+  if (index >= 0) bill.purchases[index] = purchase;
+  else bill.purchases.push(purchase);
+  bill.computedAt = new Date().toISOString();
+  upsertManagementItem("bills", bill);
+  saveState();
+  resetBillPurchaseForm();
+  loadManagementBillForm(month);
+  renderManagementBills();
+}
+
+function editBillPurchase(id) {
+  const bill = managementBillForMonth();
+  const purchase = bill?.purchases?.find((item) => item.id === id);
+  if (!purchase) return;
+  if ($("#billPurchaseId")) $("#billPurchaseId").value = purchase.id;
+  if ($("#billPurchaseDate")) $("#billPurchaseDate").value = purchase.date || "";
+  if ($("#billPurchaseItem")) $("#billPurchaseItem").value = purchase.item || "";
+  if ($("#billPurchaseAmount")) $("#billPurchaseAmount").value = purchase.amount || "";
+  if ($("#billPurchaseNotes")) $("#billPurchaseNotes").value = purchase.notes || "";
+  $("#billPurchaseItem")?.focus();
+}
+
+function deleteBillPurchase(id) {
+  state.management = normalizeManagementState(state.management);
+  const month = $("#billMonth")?.value || currentManagementMonth();
+  const bill = managementBillForMonth(month);
+  if (!bill) return;
+  bill.purchases = bill.purchases.filter((purchase) => purchase.id !== id);
+  bill.computedAt = new Date().toISOString();
+  upsertManagementItem("bills", bill);
+  saveState();
+  loadManagementBillForm(month);
+  renderManagementBills();
+}
+
+function bindBillPurchaseActions() {
+  $$('[data-edit-bill-purchase]').forEach((button) => button.addEventListener("click", () => editBillPurchase(button.dataset.editBillPurchase)));
+  $$('[data-delete-bill-purchase]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this purchase?", () => deleteBillPurchase(button.dataset.deleteBillPurchase))));
+}
 function saveManagementBill(event) {
   event.preventDefault();
   state.management = normalizeManagementState(state.management);
@@ -3973,7 +4092,8 @@ function renderBillChart() {
     const utilitiesPct = totals.total ? (totals.fixedUtilities / totals.total) * 100 : 0;
     const airconPct = totals.total ? (totals.aircon / totals.total) * 100 : 0;
     const refPct = totals.total ? (totals.refrigerator / totals.total) * 100 : 0;
-    const title = `${monthName(bill.month)}\nTotal: ${money(totals.total)}\nRent: ${money(bill.rent)}\nUtilities: ${money(totals.fixedUtilities)}\nAircon: ${money(totals.aircon)}\nRefrigerator: ${money(totals.refrigerator)}`;
+    const purchasesPct = totals.total ? (totals.purchases / totals.total) * 100 : 0;
+    const title = `${monthName(bill.month)}\nTotal: ${money(totals.total)}\nRent: ${money(bill.rent)}\nUtilities: ${money(totals.fixedUtilities)}\nAircon: ${money(totals.aircon)}\nRefrigerator: ${money(totals.refrigerator)}\nPurchases: ${money(totals.purchases)}`;
     return `<article class="bill-bar" title="${escapeAttr(title)}" tabindex="0">
       <span class="bill-bar-value">${money(totals.total).replace("PHP ", "")}</span>
       <div class="bill-bar-stack" style="height:${height}px">
@@ -3981,6 +4101,7 @@ function renderBillChart() {
         <span class="bill-segment utilities" style="height:${utilitiesPct}%"></span>
         <span class="bill-segment aircon" style="height:${airconPct}%"></span>
         <span class="bill-segment ref" style="height:${refPct}%"></span>
+        <span class="bill-segment purchases" style="height:${purchasesPct}%"></span>
       </div>
       <strong>${monthName(bill.month, true)}</strong>
     </article>`;
@@ -3994,8 +4115,8 @@ function renderBillHistoryRows(selectedMonth) {
   target.innerHTML = bills.map((bill) => {
     const totals = managementBillTotals(bill);
     const active = bill.month === selectedMonth ? " class=\"selected-row\"" : "";
-    return `<tr${active}><td>${escapeHtml(monthName(bill.month))}</td><td>${money(bill.rent)}</td><td>${money(totals.fixedUtilities)}</td><td>${money(totals.aircon)}</td><td>${money(totals.refrigerator)}</td><td>${money(totals.total)}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-bill="${escapeAttr(bill.month)}">Edit</button><button class="mini" type="button" data-delete-management-bill="${escapeAttr(bill.id)}">Delete</button></div></td></tr>`;
-  }).join("") || emptyRow(7);
+    return `<tr${active}><td>${escapeHtml(monthName(bill.month))}</td><td>${money(bill.rent)}</td><td>${money(totals.fixedUtilities)}</td><td>${money(totals.aircon)}</td><td>${money(totals.refrigerator)}</td><td>${money(totals.purchases)}</td><td>${money(totals.total)}</td><td><div class="row-actions"><button class="mini" type="button" data-edit-management-bill="${escapeAttr(bill.month)}">Edit</button><button class="mini" type="button" data-delete-management-bill="${escapeAttr(bill.id)}">Delete</button></div></td></tr>`;
+  }).join("") || emptyRow(8);
 }
 
 function bindManagementBillRowActions() {
@@ -4046,6 +4167,9 @@ function bindManagementRowActions() {
   $$('[data-edit-management-allocation]').forEach((button) => button.addEventListener("click", () => editManagementAllocation(button.dataset.editManagementAllocation)));
   $$('[data-delete-management-allocation]').forEach((button) => button.addEventListener("click", confirmBefore("Delete this allocation?", () => deleteManagementAllocation(button.dataset.deleteManagementAllocation))));
   bindManagementPieHover();
+  renderManagementTabs();
+  renderManagementBills();
+  bindManagementBillRowActions();
 }
 
 function managementBreakdownSegments(allocations, net) {
@@ -4237,7 +4361,7 @@ function saveManagementAllocation(event) {
 }
 
 function upsertManagementItem(collection, item) {
-  state.management ||= { salaries: [], allocations: [] };
+  state.management ||= { salaries: [], allocations: [], bills: [] };
   const rows = state.management[collection] || [];
   const index = rows.findIndex((existing) => existing.id === item.id);
   if (index >= 0) rows[index] = item;

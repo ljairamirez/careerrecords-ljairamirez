@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=61">
+  <link rel="stylesheet" href="style.css?v=62">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -634,7 +634,7 @@
       </section>
       <div class="management-tabs" role="tablist" aria-label="Management sections">
         <button class="management-tab active" type="button" data-management-tab="salary">Salary Plan</button>
-        <button class="management-tab" type="button" data-management-tab="bills">Next Month Bills</button>
+        <button class="management-tab" type="button" data-management-tab="bills">Current Month Bills</button>
       </div>
       <div class="management-tab-panel active" id="managementSalaryTab">
         <div class="metric-grid management-metrics" id="managementMetrics"></div>
@@ -689,7 +689,7 @@
       <div class="management-tab-panel" id="managementBillsTab">
         <section class="panel management-panel bills-panel">
           <div class="panel-head">
-            <h2>Following Month Bills</h2>
+            <h2>Current Month Bills</h2>
             <span id="billSummaryLabel">Saved per month</span>
           </div>
           <form class="grid-form bill-form" id="managementBillForm">
@@ -713,20 +713,40 @@
               <label><span>kWh Rate</span><input id="refRate" type="number" min="0" step="0.01"></label>
               <div class="bill-device-result" id="refResult">0 kWh / PHP 0.00</div>
             </section>
-            <button class="primary management-primary bill-compute-button" type="submit">Compute Bills</button>
+            <section class="bill-purchase-card">
+              <h3>Groceries / Purchases</h3>
+              <input id="billPurchaseId" type="hidden">
+              <label><span>Date</span><input id="billPurchaseDate" type="date"></label>
+              <label><span>Item</span><input id="billPurchaseItem" type="text" placeholder="Groceries, supplies, stuff"></label>
+              <label><span>Amount</span><input id="billPurchaseAmount" type="number" min="0" step="0.01" placeholder="0"></label>
+              <label class="wide"><span>Notes</span><input id="billPurchaseNotes" type="text" placeholder="Optional"></label>
+              <div class="bill-purchase-actions">
+                <button class="ghost" id="saveBillPurchase" type="button">Save Purchase</button>
+                <button class="ghost" id="clearBillPurchase" type="button">Clear Purchase</button>
+              </div>
+              <div class="bill-purchase-list" id="billPurchaseList"></div>
+            </section>
+            <button class="primary management-primary bill-compute-button" type="submit">Save Final Bills</button>
           </form>
         </section>
         <div class="metric-grid management-metrics bill-metrics" id="billMetrics"></div>
+        <section class="panel management-panel bill-final-panel">
+          <div class="panel-head">
+            <h2>Final Bills Summary</h2>
+            <span id="billFinalMonth"></span>
+          </div>
+          <div class="bill-final-summary" id="billFinalSummary"></div>
+        </section>
         <section class="panel management-panel bill-chart-panel">
           <div class="panel-head">
             <h2>Bills History</h2>
-            <span>Rent, utilities, aircon, and refrigerator</span>
+            <span>Rent, utilities, aircon, refrigerator, and purchases</span>
           </div>
-          <div class="bill-chart-legend" aria-label="Bill chart legend"><span><i class="rent"></i>Rent</span><span><i class="utilities"></i>Utilities</span><span><i class="aircon"></i>Aircon</span><span><i class="ref"></i>Refrigerator</span></div>
+          <div class="bill-chart-legend" aria-label="Bill chart legend"><span><i class="rent"></i>Rent</span><span><i class="utilities"></i>Utilities</span><span><i class="aircon"></i>Aircon</span><span><i class="ref"></i>Refrigerator</span><span><i class="purchases"></i>Purchases</span></div>
           <div class="bill-chart" id="billChart"></div>
           <div class="table-wrap compact-table">
             <table>
-              <thead><tr><th>Month</th><th>Rent</th><th>Utilities</th><th>Aircon</th><th>Refrigerator</th><th>Total</th><th></th></tr></thead>
+              <thead><tr><th>Month</th><th>Rent</th><th>Utilities</th><th>Aircon</th><th>Refrigerator</th><th>Purchases</th><th>Total</th><th></th></tr></thead>
               <tbody id="billHistoryRows"></tbody>
             </table>
           </div>
@@ -737,6 +757,6 @@
 
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
-  <script src="script.js?v=119"></script>
+  <script src="script.js?v=121"></script>
 </body>
 </html>
