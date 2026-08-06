@@ -3694,3 +3694,213 @@ tbody tr.individual-session td:first-child {
 .bill-final-panel {
   background: linear-gradient(180deg, #ffffff, #fbf8ff);
 }
+@media screen and (max-width: 560px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app,
+  .view,
+  .panel,
+  .table-wrap,
+  .week-scroll {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .topbar {
+    position: sticky;
+    width: auto;
+    min-height: 76px;
+    align-items: flex-start;
+  }
+
+  .topbar-title {
+    align-items: flex-start;
+  }
+
+  .menu-toggle,
+  .icon-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  h1 {
+    font-size: 24px;
+    line-height: 1.06;
+  }
+
+  .panel {
+    border-radius: 8px;
+  }
+
+  .week-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 8px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .week-grid {
+    width: 760px;
+    min-width: 760px;
+    grid-template-columns: 52px repeat(7, 96px);
+    grid-template-rows: 34px repeat(15, 50px);
+    padding: 8px;
+  }
+
+  .week-day-head {
+    min-width: 0;
+    padding: 8px 9px;
+    font-size: 12px;
+  }
+
+  .time-label {
+    min-width: 0;
+    padding: 0 7px 0 0;
+    font-size: 11px;
+  }
+
+  .schedule-block {
+    gap: 2px;
+    padding: 7px 8px;
+    border-left-width: 4px;
+    border-radius: 7px;
+  }
+
+  .schedule-block strong,
+  .schedule-block span {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .management-hero {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .management-hero h2 {
+    font-size: 27px;
+    line-height: 1.05;
+  }
+
+  .management-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    padding: 4px;
+  }
+
+  .management-tab {
+    min-height: 38px;
+    padding: 7px 8px;
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .management-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .management-metrics .metric {
+    min-height: 82px;
+  }
+
+  .bill-form,
+  .bill-purchase-card,
+  .bill-final-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bill-form > label,
+  .bill-device-card,
+  .bill-purchase-card,
+  .bill-form .wide,
+  .bill-compute-button,
+  .bill-purchase-card .wide,
+  .bill-purchase-actions {
+    grid-column: 1 / -1;
+  }
+
+  .bill-form > label,
+  .bill-device-card,
+  .bill-purchase-card {
+    padding: 9px;
+  }
+
+  .bill-device-card h3,
+  .bill-purchase-card h3 {
+    font-size: 14px;
+  }
+
+  .bill-final-summary {
+    padding: 12px;
+  }
+
+  .bill-final-grid strong {
+    font-size: 15px;
+  }
+
+  #claiming .release-panel {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  #claiming .release-head {
+    gap: 10px;
+  }
+
+  #claiming .claim-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  #claiming .claim-meta label {
+    grid-column: 1 / -1;
+  }
+
+  #claiming .claim-meta .ghost,
+  #claiming .claim-meta .primary {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #claiming .metric-grid.small {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  #claiming .metric {
+    min-height: 78px;
+    padding: 12px 12px 12px 14px;
+  }
+
+  #claiming .metric strong {
+    font-size: 20px;
+  }
+
+  #claiming .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #claiming table {
+    min-width: 620px;
+  }
+
+  #claiming th,
+  #claiming td {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+
+  #claiming .claim-package-head td {
+    font-size: 12px;
+  }
+}
