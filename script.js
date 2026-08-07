@@ -2119,10 +2119,10 @@ function renderDashboard() {
   const avgEarnings = activeDays ? totals.pay / activeDays : 0;
 
   $("#dashboardMetrics").innerHTML = [
-    metric("Monthly Earnings", money(totals.pay), `${monthLabel} Ã‚Â· ${countLabel(totals.sessions, "session")}`, "earnings"),
+    metric("Monthly Earnings", money(totals.pay), `${monthLabel} - ${countLabel(totals.sessions, "session")}`, "earnings"),
     metric("Ready For Claiming", money(forClaiming), "Closed packages", "unclaimed"),
-    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} Ã‚Â· ${countLabel(unclaimedSessions().length, "log")}`, "total"),
-    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} Ã‚Â· ${countLabel(peak.sessions, "session")}` : "No sessions", "peak")
+    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} - ${countLabel(unclaimedSessions().length, "log")}`, "total"),
+    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} - ${countLabel(peak.sessions, "session")}` : "No sessions", "peak")
   ].join("");
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
