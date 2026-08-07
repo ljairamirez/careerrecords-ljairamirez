@@ -1525,17 +1525,7 @@ function lockPersonalAccess() {
 }
 
 async function requestManagementAccess() {
-  if (isManagementUnlocked()) return true;
-
-  const unlocked = await showAccessDialog({
-    title: "Management",
-    message: "Enter your Management password to continue.",
-    unavailableMessage: "Management lock is unavailable in this browser session.",
-    validate: async (value) => await sha256Text(value) === MANAGEMENT_ACCESS_HASH
-  });
-
-  if (unlocked) sessionStorage.setItem(MANAGEMENT_ACCESS_STORAGE_KEY, "true");
-  return unlocked;
+  return true;
 }
 function setupNavigation() {
   const menuToggle = $("#menuToggle");
@@ -2129,10 +2119,10 @@ function renderDashboard() {
   const avgEarnings = activeDays ? totals.pay / activeDays : 0;
 
   $("#dashboardMetrics").innerHTML = [
-    metric("Monthly Earnings", money(totals.pay), `${monthLabel} Â· ${countLabel(totals.sessions, "session")}`, "earnings"),
+    metric("Monthly Earnings", money(totals.pay), `${monthLabel} Ã‚Â· ${countLabel(totals.sessions, "session")}`, "earnings"),
     metric("Ready For Claiming", money(forClaiming), "Closed packages", "unclaimed"),
-    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} Â· ${countLabel(unclaimedSessions().length, "log")}`, "total"),
-    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} Â· ${countLabel(peak.sessions, "session")}` : "No sessions", "peak")
+    metric("Total Unclaimed", money(currentUnclaimed), `${unclaimedSinceLabel()} Ã‚Â· ${countLabel(unclaimedSessions().length, "log")}`, "total"),
+    metric("Peak Day of the Month", peak ? money(peak.pay) : money(0), peak ? `${formatDate(peak.date)} Ã‚Â· ${countLabel(peak.sessions, "session")}` : "No sessions", "peak")
   ].join("");
 
   const months = monthlySummary(state.sessions.filter((row) => row.status !== "Cancelled").filter(hasUsableDate)).slice(-12);
