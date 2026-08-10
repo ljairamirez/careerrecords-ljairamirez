@@ -1936,13 +1936,12 @@ function oneTimeScheduleIsLapsed(item, baseDate = new Date()) {
   return occurrence ? occurrence.end < baseDate : false;
 }
 
-function removeLapsedOneTimeSchedules(baseDate = new Date(), persist = true) {
-  const schedules = state.schedules || [];
-  const nextSchedules = schedules.filter((item) => !oneTimeScheduleIsLapsed(item, baseDate));
-  if (nextSchedules.length === schedules.length) return false;
-  state.schedules = nextSchedules;
-  if (persist) saveState();
-  return true;
+function removeLapsedOneTimeSchedules() {
+  return false;
+}
+
+function activeScheduleItems(baseDate = new Date()) {
+  return (state.schedules || []).filter((item) => !oneTimeScheduleIsLapsed(item, baseDate));
 }
 
 function projectionNameKey(value) {
@@ -1971,7 +1970,7 @@ function weekKeyForDate(date) {
 }
 
 function scheduledProjectionForMonth(range, hourlyRate = 300) {
-  const scheduleItems = (state.schedules || [])
+  const scheduleItems = activeScheduleItems()
     .filter(scheduleStatusAllowsProjection)
     .filter((item) => item.start && item.end);
   const start = isoToLocalDate(range.start);
@@ -2396,14 +2395,16 @@ function renderSchedule() {
   const rows = [...state.schedules]
     .sort((a, b) => order[a.day] - order[b.day] || a.start.localeCompare(b.start));
 
-  $("#scheduleRows").innerHTML = rows.map((item) => (
-    `<tr>
+  $("#scheduleRows").innerHTML = rows.map((item) => {
+    const lapsedOneTime = oneTimeScheduleIsLapsed(item);
+    const statusText = lapsedOneTime ? "Done" : item.status;
+    return `<tr class="${lapsedOneTime ? "lapsed-one-time-row" : ""}">
       <td>${escapeHtml(item.day)}</td>
       <td>${escapeHtml(formatScheduleTimeRange(item.start, item.end))}</td>
       <td>${escapeHtml(item.student)}</td>
       <td><span class="mode-badge ${normalizeMode(item.mode)}">${escapeHtml(item.mode)}</span></td>
       <td>${escapeHtml(item.frequency)}</td>
-      <td>${escapeHtml(item.status)}</td>
+      <td>${escapeHtml(statusText)}</td>
       <td>${escapeHtml(item.notes || "")}</td>
       <td>
         <div class="row-actions">
@@ -2411,8 +2412,8 @@ function renderSchedule() {
           <button class="mini" type="button" data-delete-schedule="${escapeAttr(item.id)}">Delete</button>
         </div>
       </td>
-    </tr>`
-  )).join("") || emptyRow(8);
+    </tr>`;
+  }).join("") || emptyRow(8);
 
   $$("[data-edit-schedule]").forEach((button) =>
     button.addEventListener("click", () => editSchedule(button.dataset.editSchedule))
@@ -2434,7 +2435,7 @@ function renderWeekly() {
   }).join("");
   const dayHeads = days.map((day, index) => `<div class="week-day-head" style="grid-column:${index + 2};grid-row:1">${day}</div>`).join("");
   const hourLines = Array.from({ length: rows }, (_, index) => `<div class="hour-line" style="grid-column:1 / 9;grid-row:${index + 2}"></div>`).join("");
-  const scheduleItems = state.schedules
+  const scheduleItems = activeScheduleItems()
     .filter((item) => item.status !== "Inactive")
     .filter((item) => item.start && item.end);
   const dayLanes = days.map((day, index) => {
