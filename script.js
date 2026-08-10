@@ -4474,33 +4474,65 @@ function resetScheduleForm() {
 
 function setSuggestedRate({ force = false } = {}) {
   const rateInput = $("#sessionRate");
+  const classTypeSelect = $("#sessionClassType");
+  const packageName = $("#sessionPackage").value;
   const editingExistingSession = Boolean($("#sessionId").value);
   if (!force && (editingExistingSession || sessionRateManuallyEdited)) return;
+
+  const classType = rateClassTypeForPackage(classTypeSelect.value, packageName);
+  if (isGroupRatePackage(packageName) && classTypeSelect.value !== classType) {
+    classTypeSelect.value = classType;
+  }
+
   const rate = lookupRate({
     tutor: $("#sessionTutor").value,
-    classType: $("#sessionClassType").value,
+    classType,
     mode: $("#sessionMode").value,
-    packageName: $("#sessionPackage").value
+    packageName
   });
   rateInput.value = rate || "";
 }
 
 function lookupRate(session) {
+  const packageName = normalizeRatePackageName(session.packageName);
+  const classType = rateClassTypeForPackage(session.classType, packageName);
+  const hasMode = Boolean(String(session.mode || "").trim());
+  const canUseAnyGroupMode = isGroupRatePackage(packageName) && !hasMode;
   const scoreRate = (rate) => {
     let score = 0;
     if (rate.tutor === CURRENT_RATE_TUTOR) score += 16;
-    if (rate.classType === session.classType) score += 4;
-    if (sameMode(rate.mode, session.mode)) score += 2;
-    if (rate.packageName === session.packageName) score += 1;
+    if (rate.classType === classType) score += 4;
+    if (hasMode && sameMode(rate.mode, session.mode)) score += 2;
+    if (normalizeRatePackageName(rate.packageName) === packageName) score += 1;
     return score;
   };
   const candidates = state.rates
     .filter((rate) => rate.tutor === CURRENT_RATE_TUTOR)
-    .filter((rate) => rate.classType === session.classType)
-    .filter((rate) => sameMode(rate.mode, session.mode))
-    .filter((rate) => rate.packageName === session.packageName)
+    .filter((rate) => rate.classType === classType)
+    .filter((rate) => canUseAnyGroupMode || sameMode(rate.mode, session.mode))
+    .filter((rate) => normalizeRatePackageName(rate.packageName) === packageName)
     .sort((a, b) => scoreRate(b) - scoreRate(a));
   return (candidates[0] || {}).amount || 0;
+}
+
+function rateClassTypeForPackage(classType, packageName) {
+  return isGroupRatePackage(packageName) ? "Group" : classType;
+}
+
+function isGroupRatePackage(packageName) {
+  return /\b(pair|trio|group)\b/i.test(String(packageName || ""));
+}
+
+function normalizeRatePackageName(packageName) {
+  const text = String(packageName || "").trim();
+  if (/^group\s*\(?2\)?\s*students?$/i.test(text)) return "Pair (SB)";
+  if (/^group\s*\(?3\)?\s*students?$/i.test(text)) return "Trio (SB)";
+  if (/^group\s*\(?4\)?(?:\s*students?)?$/i.test(text)) return "Group (4)";
+  if (/^group\s*\(?5\s*-\s*9\)?(?:\s*students?)?$/i.test(text)) return "Group (5-9)";
+  if (/^group\s*\(?10\+\)?(?:\s*students?)?$/i.test(text)) return "Group (10+)";
+  if (/^group\s*\(?5\s*(?:and\s*)?up\)?$/i.test(text)) return "Group (5-9)";
+  if (/^group\s*\(?10\s*(?:and\s*)?up\)?$/i.test(text)) return "Group (10+)";
+  return text === "Group (5 and up)" ? "Group (5-9)" : text;
 }
 
 function sameMode(a, b) {
