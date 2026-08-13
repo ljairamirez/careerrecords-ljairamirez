@@ -1,7 +1,7 @@
 const STORAGE_KEY = "salary-sheet-state-v5";
 const CLOUD_STATE_ENDPOINT = "/api/salary-state";
 const CLOUD_FILE_ENDPOINT = "/api/record-file";
-const CLOUD_SYNC_DEBOUNCE_MS = 900;
+const CLOUD_SYNC_DEBOUNCE_MS = 250;
 const CLOUD_REFRESH_MS = 15000;
 const DEFAULT_SESSION_START_TIME = "12:00";
 const CURRENT_RATE_TUTOR = "Graduate Tutor";
@@ -1176,6 +1176,7 @@ function hostingProviderName() {
 
 async function initializeCloudSync() {
   cloudSync.enabled = shouldUseCloudSync();
+  setupCloudSaveLifecycle();
   renderCloudStatus();
   if (!cloudSync.enabled) return;
 
@@ -1184,22 +1185,33 @@ async function initializeCloudSync() {
   renderCloudStatus();
 
   try {
+    const localStateAtStartup = state;
     const response = await fetch(CLOUD_STATE_ENDPOINT, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud sync failed"));
     const payload = await response.json();
     if (payload?.state) {
       const remoteState = migrateState(payload.state);
       cloudSync.lastSavedAt = payload.updatedAt || "";
-      state = remoteState;
-      const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      cloudSync.dirty = cleanedOneTimeSchedules;
-      cloudSync.saveQueued = cleanedOneTimeSchedules;
+
+      if (hadLocalStateAtStartup && localStateShouldWinCloud(localStateAtStartup, payload)) {
+        state = migrateState(localStateAtStartup);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        cloudSync.dirty = true;
+        cloudSync.saveQueued = true;
+      } else {
+        state = remoteState;
+        const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        cloudSync.dirty = cleanedOneTimeSchedules;
+        cloudSync.saveQueued = cleanedOneTimeSchedules;
+      }
+
       hydrateControls();
       render();
       migrateLegacyRecordAttachments();
     } else if (hadLocalStateAtStartup) {
-      await syncCloudSave(true);
+      cloudSync.dirty = true;
+      cloudSync.saveQueued = true;
     } else {
       cloudSync.error = "No cloud data found";
     }
@@ -1208,23 +1220,32 @@ async function initializeCloudSync() {
     cloudSync.error = error.message || "Cloud sync unavailable";
     console.warn("Cloud sync unavailable.", error);
   } finally {
-  cloudSync.loading = false;
+    cloudSync.loading = false;
 
-  /*
-    If the user created/edited a record while cloud data was loading,
-    save that newer local version after loading completes.
-  */
-  if (cloudSync.saveQueued) {
-    cloudSync.saveQueued = false;
-    window.setTimeout(() => syncCloudSave(), 0);
+    if (cloudSync.saveQueued) {
+      cloudSync.saveQueued = false;
+      window.setTimeout(() => syncCloudSave(), 0);
+    }
+
+    startCloudRefresh();
+    renderCloudStatus();
   }
-
-  renderCloudStatus();
-}
 }
 
-function localStateShouldWinCloud() {
-  return false;
+function stateUpdatedAtValue(candidate) {
+  const value = Date.parse(candidate?.localUpdatedAt || candidate?.updatedAt || "");
+  return Number.isFinite(value) ? value : 0;
+}
+
+function remotePayloadUpdatedAtValue(payload) {
+  const wrapperValue = Date.parse(payload?.updatedAt || "");
+  return Math.max(Number.isFinite(wrapperValue) ? wrapperValue : 0, stateUpdatedAtValue(payload?.state));
+}
+
+function localStateShouldWinCloud(localState, payload) {
+  const localTime = stateUpdatedAtValue(localState);
+  const remoteTime = remotePayloadUpdatedAtValue(payload);
+  return Boolean(localTime && localTime > remoteTime + 1000);
 }
 
 function currentMonthSessionHistoryIsAhead(localState, remoteState) {
@@ -1297,6 +1318,7 @@ async function syncCloudSave(force = false) {
 
     cloudSync.lastSavedAt = payload.updatedAt || new Date().toISOString();
     cloudSync.lastSavedRevision = revisionBeingSaved;
+    cloudSync.dirty = cloudSync.revision > revisionBeingSaved;
   } catch (error) {
     cloudSync.error = "Cloud save failed";
     console.warn("Cloud save failed.", error);
@@ -1311,6 +1333,7 @@ async function syncCloudSave(force = false) {
       cloudSync.saveQueued ||
       cloudSync.revision > revisionBeingSaved
     ) {
+      cloudSync.dirty = true;
       cloudSync.saveQueued = false;
       window.setTimeout(() => syncCloudSave(), 0);
     }
@@ -1319,6 +1342,21 @@ async function syncCloudSave(force = false) {
   }
 }
 
+function setupCloudSaveLifecycle() {
+  if (cloudSync.lifecycleStarted) return;
+  cloudSync.lifecycleStarted = true;
+
+  const flush = () => {
+    if (!cloudSync.enabled || !cloudSync.dirty) return;
+    clearTimeout(cloudSync.timer);
+    syncCloudSave(true);
+  };
+
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) flush();
+  });
+}
 function startCloudRefresh() {
   if (!cloudSync.enabled || cloudSync.refreshStarted) return;
   cloudSync.refreshStarted = true;
@@ -3137,6 +3175,28 @@ function samePackageLabel(a, b) {
   return first.toLowerCase() === second.toLowerCase();
 }
 
+function sessionStatusForSelectedPackage(student, label, existing) {
+  if (existing) {
+    return {
+      status: existing.status || "Pending",
+      claimDate: existing.claimDate || "",
+      claimed: existing.claimed || false,
+      color: existing.color || "open"
+    };
+  }
+
+  const packageRows = (state.sessions || []).filter((session) =>
+    normalizeStudentName(session.student) === normalizeStudentName(student) &&
+    samePackageLabel(packageGroupLabel(session), label)
+  );
+
+  if (packageRows.some(isClaimingStatus)) {
+    return { status: "For Claiming", claimDate: "", claimed: false, color: "claiming" };
+  }
+
+  return { status: "Pending", claimDate: "", claimed: false, color: "open" };
+}
+
 function setSelectedPackagesStatus(status) {
   const selected = new Set($$(".package-check:checked").map((box) => box.value));
   if (!selected.size) return;
@@ -3418,10 +3478,12 @@ function saveSession(event) {
   const hours = Number($("#sessionHours").value || 0);
   const rate = Number($("#sessionRate").value || 0);
   const selectedPackageName = $("#sessionPackage").value;
+  const selectedPackageLabel = $("#sessionClaimPackage").value || "PACKAGE 1";
   const selectedClassType = $("#sessionClassType").value;
   const studentCount = existing && existing.packageName === selectedPackageName && existing.classType === selectedClassType
     ? Number(existing.studentCount || inferStudentCountFromPackage(selectedPackageName, selectedClassType))
     : inferStudentCountFromPackage(selectedPackageName, selectedClassType);
+  const packageStatusDefaults = sessionStatusForSelectedPackage(studentName, selectedPackageLabel, existing);
   const session = {
     id,
     date: $("#sessionDate").value,
@@ -3431,17 +3493,17 @@ function saveSession(event) {
     tutor: $("#sessionTutor").value,
     student: studentName,
     packageName: selectedPackageName,
-    packageLabel: $("#sessionClaimPackage").value || "Package 1",
+    packageLabel: selectedPackageLabel,
     classType: selectedClassType,
     mode: $("#sessionMode").value ? normalizeModeLabel($("#sessionMode").value) : "",
     studentCount,
     hours,
     rate,
     totalPay: hours * rate,
-    status: existing?.status || "Pending",
-    claimDate: existing?.claimDate || "",
-    claimed: existing?.claimed || false,
-    color: existing?.color || "open",
+    status: packageStatusDefaults.status,
+    claimDate: packageStatusDefaults.claimDate,
+    claimed: packageStatusDefaults.claimed,
+    color: packageStatusDefaults.color,
     notes: $("#sessionNotes").value.trim()
   };
   upsert("sessions", session);
