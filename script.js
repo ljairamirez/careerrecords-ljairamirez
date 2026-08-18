@@ -763,6 +763,8 @@ const defaultState = {
     { key: "Lloyd Ramirez", name: "Lloyd Ramirez", status: "Active", notes: "" }
   ],
   personalSessions: [],
+  deletedSessionIds: [],
+  deletedScheduleIds: [],
   records: [],
   management: {
     salaries: [],
@@ -1049,7 +1051,11 @@ function ensureGraduateTutorRates(targetState) {
 function migrateState(inputState) {
   const next = inputState || buildInitialState();
   const imported = window.salarySheetWorkbookData;
-  const importedRows = (imported?.sessions || []).filter((session) => !REMOVED_IMPORTED_SESSION_IDS.has(session.id));
+  next.deletedSessionIds = uniqueValues(next.deletedSessionIds || []);
+  next.deletedScheduleIds = uniqueValues(next.deletedScheduleIds || []);
+  const deletedSessionIds = new Set([...next.deletedSessionIds, ...REMOVED_IMPORTED_SESSION_IDS]);
+  const deletedScheduleIds = new Set([...next.deletedScheduleIds, ...REMOVED_IMPORTED_SCHEDULE_IDS]);
+  const importedRows = (imported?.sessions || []).filter((session) => !deletedSessionIds.has(session.id));
   const importedSessions = Object.fromEntries(importedRows.map((session) => [session.id, session]));
   const shouldResetImportedOpenStatuses = next.importStatusPolicyVersion !== IMPORT_STATUS_POLICY_VERSION;
 
@@ -1093,7 +1099,7 @@ function migrateState(inputState) {
       color: status === "Claimed" || status === "Archived" ? "claimed" : isClaimingStatus({ status }) ? "claiming" : "open"
     };
   };
-  next.sessions = (next.sessions || []).filter((session) => !REMOVED_IMPORTED_SESSION_IDS.has(session.id)).map(hydrateSession);
+  next.sessions = (next.sessions || []).filter((session) => !deletedSessionIds.has(session.id)).map(hydrateSession);
   next.personalSessions = (next.personalSessions || []).map((session) => ({
     ...session,
     student: normalizeStudentName(session.student),
@@ -1146,7 +1152,7 @@ function migrateState(inputState) {
   next.importStatusPolicyVersion = IMPORT_STATUS_POLICY_VERSION;
 
   next.schedules = (next.schedules || [])
-    .filter((item) => !REMOVED_IMPORTED_SCHEDULE_IDS.has(item.id))
+    .filter((item) => !deletedScheduleIds.has(item.id))
     .map((item) => ({
     ...item,
     student: normalizeStudentName(item.student),
@@ -1246,6 +1252,12 @@ function localStateShouldWinCloud(localState, payload) {
   const localTime = stateUpdatedAtValue(localState);
   const remoteTime = remotePayloadUpdatedAtValue(payload);
   return Boolean(localTime && localTime > remoteTime + 1000);
+}
+
+function cloudPayloadIsNewerThanLocal(payload, localState = state) {
+  const localTime = stateUpdatedAtValue(localState);
+  const remoteTime = remotePayloadUpdatedAtValue(payload);
+  return Boolean(payload?.state && remoteTime && (!localTime || remoteTime > localTime + 1000));
 }
 
 function currentMonthSessionHistoryIsAhead(localState, remoteState) {
@@ -1369,6 +1381,7 @@ function startCloudRefresh() {
 
 async function refreshCloudState() {
   if (!cloudSync.enabled || cloudSync.loading || cloudSync.saving || cloudSync.dirty || document.hidden) return;
+  const refreshRevision = cloudSync.revision;
   try {
     const response = await fetch(CLOUD_STATE_ENDPOINT, {
       headers: { Accept: "application/json" },
@@ -1377,6 +1390,13 @@ async function refreshCloudState() {
     if (!response.ok) throw new Error(await cloudResponseError(response, "Cloud refresh failed"));
     const payload = await response.json();
     if (!payload?.state || !payload.updatedAt || payload.updatedAt === cloudSync.lastSavedAt) return;
+    if (cloudSync.loading || cloudSync.saving || cloudSync.dirty || cloudSync.revision !== refreshRevision || document.hidden) return;
+    if (!cloudPayloadIsNewerThanLocal(payload)) {
+      const localTime = stateUpdatedAtValue(state);
+      const remoteTime = remotePayloadUpdatedAtValue(payload);
+      if (localTime && remoteTime && localTime > remoteTime + 1000) queueCloudSave();
+      return;
+    }
     state = migrateState(payload.state);
     const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -4466,6 +4486,12 @@ function resetManagementAllocationForm() {
   $("#allocationMonth").value = currentManagementMonth();
 }
 function deleteItem(collection, id) {
+  if (collection === "sessions") {
+    state.deletedSessionIds = uniqueValues([...(state.deletedSessionIds || []), id]);
+  }
+  if (collection === "schedules") {
+    state.deletedScheduleIds = uniqueValues([...(state.deletedScheduleIds || []), id]);
+  }
   if (collection === "records") {
     const record = state.records.find((item) => item.id === id);
     if (record?.attachmentId) deleteAttachmentBlob(record.attachmentId);
@@ -5528,24 +5554,3 @@ function linkifyEscapedText(escaped) {
     return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">${cleanMatch}</a>${trailing}`;
   });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
