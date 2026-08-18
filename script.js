@@ -2419,33 +2419,98 @@ function renderPersonalGroups() {
 }
 
 function renderRates() {
-  const visibleRates = state.rates.filter((rate) => rate.tutor === CURRENT_RATE_TUTOR);
-  $("#rateRows").innerHTML = visibleRates.map((rate) => (
-    `<tr>
-      <td>${rateSelect(rate.id, "tutor", [CURRENT_RATE_TUTOR], rate.tutor)}</td>
-      <td>${rateSelect(rate.id, "classType", state.settings.classTypes, rate.classType)}</td>
-      <td>${rateSelect(rate.id, "mode", state.settings.modes, rate.mode)}</td>
-      <td>${rateSelect(rate.id, "packageName", state.settings.packages, rate.packageName)}</td>
-      <td><input class="rate-edit" data-rate-id="${escapeAttr(rate.id)}" data-rate-field="amount" type="number" min="0" step="0.01" value="${escapeAttr(rate.amount)}"></td>
-      <td><div class="row-actions"><button class="mini" type="button" data-delete-rate="${escapeAttr(rate.id)}">Delete</button></div></td>
-    </tr>`
-  )).join("") || emptyRow(6);
+  const target = $("#rateReferenceTables");
+  if (!target) return;
+  const classTypes = ["Elem/JHS", "SHS", "College"];
+  const modeLabels = ["Virtual", "F2F"];
+  const graduateHeader = `<tr><th rowspan="2">Package</th>${modeLabels.map((mode) => `<th class="rate-mode-head" colspan="${classTypes.length}">${escapeHtml(mode)}</th>`).join("")}</tr>
+    <tr>${modeLabels.flatMap(() => classTypes.map((classType) => `<th>${escapeHtml(classType)}</th>`)).join("")}</tr>`;
+  const graduateRows = graduateTutorRatePackages.map((pkg) => `<tr>
+    <th>${escapeHtml(pkg.packageName)}</th>
+    ${modeLabels.flatMap((mode) => classTypes.map((classType) => `<td>${rateAmountInput({ packageName: pkg.packageName, classType, mode })}</td>`)).join("")}
+  </tr>`).join("");
+  const groupRows = studyBuddyRatePackages.map((pkg) => `<tr>
+    <th>${escapeHtml(pkg.packageName)}</th>
+    <td>${rateAmountInput({ packageName: pkg.packageName, classType: "Group", mode: "", group: true })}</td>
+  </tr>`).join("");
+
+  target.innerHTML = `<div class="rate-table-card">
+    <div class="rate-table-title"><strong>Graduate Tutor Rates</strong><span>Editable rate per hour</span></div>
+    <div class="table-wrap rate-reference-wrap"><table class="rate-matrix"><thead>${graduateHeader}</thead><tbody>${graduateRows}</tbody></table></div>
+  </div>
+  <div class="rate-table-card compact-rate-card">
+    <div class="rate-table-title"><strong>Group / Study-Buddy Rates</strong><span>Saved for Virtual, F2F, and Hybrid</span></div>
+    <div class="table-wrap rate-reference-wrap"><table class="rate-matrix group-rate-table"><thead><tr><th>Package</th><th>Rate per Hour</th></tr></thead><tbody>${groupRows}</tbody></table></div>
+  </div>`;
 
   $$(".rate-edit").forEach((control) => control.addEventListener("change", () => updateRateCell(control)));
-  $$("[data-delete-rate]").forEach((button) => button.addEventListener("click", confirmBefore("Delete this rate?", () => deleteItem("rates", button.dataset.deleteRate))));
 }
 
-function rateSelect(id, field, options, value) {
-  return `<select class="rate-edit" data-rate-id="${escapeAttr(id)}" data-rate-field="${escapeAttr(field)}">${options.map((option) => `<option value="${escapeAttr(option)}"${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+function rateAmountInput({ packageName, classType, mode, group = false }) {
+  const amount = group ? groupRateAmount(packageName) : specificRateAmount({ packageName, classType, mode });
+  return `<input class="rate-edit rate-table-input" data-rate-package="${escapeAttr(packageName)}" data-rate-class="${escapeAttr(classType)}" data-rate-mode="${escapeAttr(mode)}" data-rate-group="${group ? "true" : "false"}" type="number" min="0" step="0.01" value="${escapeAttr(amount || "")}" aria-label="${escapeAttr(`${packageName} ${classType} ${mode} rate`)}">`;
+}
+
+function specificRateAmount({ packageName, classType, mode }) {
+  const rate = state.rates.find((item) => (
+    item.tutor === CURRENT_RATE_TUTOR &&
+    item.classType === classType &&
+    sameMode(item.mode, mode) &&
+    normalizeRatePackageName(item.packageName) === normalizeRatePackageName(packageName)
+  ));
+  return rate?.amount || "";
+}
+
+function groupRateAmount(packageName) {
+  const normalizedPackage = normalizeRatePackageName(packageName);
+  const rates = state.rates.filter((item) => (
+    item.tutor === CURRENT_RATE_TUTOR &&
+    item.classType === "Group" &&
+    normalizeRatePackageName(item.packageName) === normalizedPackage
+  ));
+  return rates[0]?.amount || "";
+}
+
+function upsertRateReference({ packageName, classType, mode, amount }) {
+  const normalizedPackage = normalizeRatePackageName(packageName);
+  const existing = state.rates.find((item) => (
+    item.tutor === CURRENT_RATE_TUTOR &&
+    item.classType === classType &&
+    sameMode(item.mode, mode) &&
+    normalizeRatePackageName(item.packageName) === normalizedPackage
+  ));
+  if (existing) {
+    existing.packageName = normalizedPackage;
+    existing.mode = mode;
+    existing.amount = amount;
+    return;
+  }
+  state.rates.push({
+    id: uid(),
+    tutor: CURRENT_RATE_TUTOR,
+    classType,
+    mode,
+    packageName: normalizedPackage,
+    amount
+  });
 }
 
 function updateRateCell(control) {
-  const rate = state.rates.find((item) => item.id === control.dataset.rateId);
-  if (!rate) return;
   if (!window.confirm("Save this rate change?")) { renderRates(); return; }
-  rate[control.dataset.rateField] = control.dataset.rateField === "amount" ? Number(control.value || 0) : control.value;
+  const amount = Number(control.value || 0);
+  const packageName = control.dataset.ratePackage;
+  const classType = control.dataset.rateClass;
+  const mode = control.dataset.rateMode;
+
+  if (control.dataset.rateGroup === "true") {
+    studyBuddyRateModes.forEach((groupMode) => upsertRateReference({ packageName, classType: "Group", mode: groupMode, amount }));
+  } else {
+    upsertRateReference({ packageName, classType, mode, amount });
+  }
+
   saveState();
   setSuggestedRate();
+  renderRates();
 }
 
 function renderSchedule() {

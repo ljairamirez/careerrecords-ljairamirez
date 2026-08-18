@@ -3902,3 +3902,100 @@ tbody tr.college-session:not(.group-session) td:first-child {
     min-height: 0;
   }
 }
+.rate-reference-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.rate-table-card {
+  border: 1px solid #bcd3f8;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8fbff;
+}
+
+.rate-table-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, #eef6ff, #eefdfb);
+  border-bottom: 1px solid #c9dcfb;
+}
+
+.rate-table-title strong {
+  font-size: 15px;
+}
+
+.rate-table-title span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rate-reference-wrap table {
+  min-width: 760px;
+}
+
+.rate-matrix th,
+.rate-matrix td {
+  text-align: center;
+  padding: 8px;
+}
+
+.rate-matrix tbody th {
+  background: #fff7df;
+  color: #25313a;
+  font-size: 13px;
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.rate-matrix .rate-mode-head {
+  background: #dceaff;
+  color: #0049b0;
+  font-size: 13px;
+}
+
+.rate-matrix thead tr:nth-child(2) th:nth-child(-n + 3) {
+  background: #eef7ff;
+}
+
+.rate-matrix thead tr:nth-child(2) th:nth-child(n + 4) {
+  background: #e8f1ff;
+}
+
+.rate-table-input {
+  width: 88px;
+  min-height: 34px;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.group-rate-table {
+  min-width: 420px !important;
+}
+
+.group-rate-table .rate-table-input {
+  width: 120px;
+}
+
+@media (max-width: 720px) {
+  .rate-table-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .rate-reference-wrap table {
+    min-width: 680px;
+  }
+
+  .group-rate-table {
+    min-width: 360px !important;
+  }
+}
