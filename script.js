@@ -1156,7 +1156,8 @@ function migrateState(inputState) {
     .map((item) => ({
     ...item,
     student: normalizeStudentName(item.student),
-    mode: normalizeModeLabel(item.mode)
+    mode: normalizeModeLabel(item.mode),
+    occurrenceDate: item.occurrenceDate || ""
   }));
   next.rates = (next.rates || []).map((rate) => ({ ...rate, mode: normalizeModeLabel(rate.mode) }));
   return next;
@@ -1988,9 +1989,38 @@ function scheduleOccurrenceThisWeek(item, baseDate = new Date()) {
   };
 }
 
+function scheduleOccurrenceOnDate(item, occurrenceDate) {
+  if (!item?.start || !item.end || !occurrenceDate) return null;
+  const startMinutes = scheduleMinutes(item.start);
+  let endMinutes = scheduleMinutes(item.end);
+  if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+  const start = isoToLocalDate(occurrenceDate);
+  start.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
+  const end = new Date(start);
+  end.setHours(0, 0, 0, 0);
+  end.setMinutes(endMinutes);
+  return { start, end, date: occurrenceDate };
+}
+
+function nextOneTimeOccurrence(item, baseDate = new Date()) {
+  let occurrence = scheduleOccurrenceThisWeek(item, baseDate);
+  if (!occurrence) return null;
+  while (occurrence.end < baseDate) {
+    occurrence.start.setDate(occurrence.start.getDate() + 7);
+    occurrence.end.setDate(occurrence.end.getDate() + 7);
+    occurrence.date = localIsoDate(occurrence.start);
+  }
+  return occurrence;
+}
+
+function oneTimeOccurrenceDate(item, baseDate = new Date()) {
+  return nextOneTimeOccurrence(item, baseDate)?.date || "";
+}
+
 function oneTimeScheduleIsLapsed(item, baseDate = new Date()) {
   if (!isOneTimeSchedule(item)) return false;
-  const occurrence = scheduleOccurrenceThisWeek(item, baseDate);
+  if (!item.occurrenceDate) return false;
+  const occurrence = scheduleOccurrenceOnDate(item, item.occurrenceDate);
   return occurrence ? occurrence.end < baseDate : false;
 }
 
@@ -3726,16 +3756,20 @@ function saveSchedule(event) {
     mode: $("#scheduleMode").value ? normalizeModeLabel($("#scheduleMode").value) : "",
     frequency: $("#scheduleFrequency").value,
     status: existing?.status || "Active",
-    notes: $("#scheduleNotes").value.trim()
+    notes: $("#scheduleNotes").value.trim(),
+    createdAt: existing?.createdAt || new Date().toISOString()
   };
   if (!scheduleBase.student) return;
   ensureStudent(scheduleBase.student, "schedule");
   const scheduleDays = selectedDay === "Weekday" ? weekdays : [selectedDay];
+  const baseDate = new Date();
   scheduleDays.forEach((day) => {
+    const draft = { ...scheduleBase, day };
     upsert("schedules", {
       id: existing ? existing.id : uid(),
       day,
-      ...scheduleBase
+      ...scheduleBase,
+      occurrenceDate: isOneTimeSchedule(draft) ? oneTimeOccurrenceDate(draft, baseDate) : ""
     });
   });
   resetScheduleForm();
