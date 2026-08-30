@@ -1687,6 +1687,7 @@ function setupForms() {
 
   $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
   $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
+  $("#personalSessionMode")?.addEventListener("change", setPersonalSuggestedRate);
 
   $("#monthFilter").addEventListener("change", render);
   $("#tutorFilter")?.addEventListener("change", render);
@@ -1789,7 +1790,6 @@ function hydrateControls() {
   fillSelect($("#sessionClassType"), state.settings.classTypes);
   fillSelect($("#sessionMode"), state.settings.modes);
   fillDatalist($("#personalStudentOptions"), personalStudentNames());
-  fillSelect($("#personalSessionPackage"), state.settings.packages);
   fillSelect($("#personalSessionClassType"), state.settings.classTypes);
   fillSelect($("#personalSessionMode"), state.settings.modes);
 
@@ -3257,6 +3257,12 @@ function updatePersonalSessionPackageOptions(selected = "") {
   const current = selected || input.value.trim();
   const nextLabel = nextPersonalPackageLabel(current, { editing });
   input.value = nextLabel;
+  const display = $("#personalSessionPackageDisplay");
+  if (display) display.value = nextLabel;
+}
+
+function personalPackageIsOpen(pkg) {
+  return Boolean(pkg?.sessions?.some((session) => session.status !== "Closed" && !isClaimedStatus(session)));
 }
 
 function nextPersonalPackageLabel(selected = "", options = {}) {
@@ -3264,14 +3270,27 @@ function nextPersonalPackageLabel(selected = "", options = {}) {
   const student = normalizeStudentName($("#personalSessionStudent")?.value.trim() || "");
   if (!student) return selected || "";
   const summaries = packageSummaries((state.personalSessions || []).filter((session) => session.student === student));
-  const isClosed = (pkg) => pkg.sessions.length && pkg.sessions.every((session) => session.status === "Closed");
   const selectedPackage = summaries.find((pkg) => samePackageLabel(pkg.label, selected));
   if (options.editing && selected) return selected;
-  if (selected && (!selectedPackage || !isClosed(selectedPackage))) return selected;
-  const openPackage = summaries.find((pkg) => !isClosed(pkg))?.label;
+  if (selected && (!selectedPackage || personalPackageIsOpen(selectedPackage))) return selected;
+  const openPackage = summaries.find(personalPackageIsOpen)?.label;
   if (openPackage) return openPackage;
   const numbers = summaries.map((pkg) => packageNumber(pkg.label)).filter(Boolean);
   return `PACKAGE ${Math.max(0, ...numbers) + 1}`;
+}
+
+function personalRateForMode(mode) {
+  const normalized = normalizeMode(mode);
+  if (normalized === "f2f") return 450;
+  if (normalized === "virtual") return 400;
+  return "";
+}
+
+function setPersonalSuggestedRate() {
+  const rateInput = $("#personalSessionRate");
+  if (!rateInput) return;
+  const rate = personalRateForMode($("#personalSessionMode")?.value || "");
+  rateInput.value = rate === "" ? "" : rate;
 }
 
 function normalizePackageEntryLabel(value) {
@@ -3637,7 +3656,8 @@ function savePersonalSession(event) {
   const studentName = normalizeStudentName($("#personalSessionStudent").value.trim());
   const selectedPackageLabel = $("#personalSessionPackageLabel").value.trim() || existing?.packageLabel || existing?.packageName || "";
   const packageLabel = nextPersonalPackageLabel(selectedPackageLabel, { editing: Boolean(existing) });
-  const rate = Number($("#personalSessionRate").value || 0);
+  const automaticRate = personalRateForMode($("#personalSessionMode").value);
+  const rate = Number((automaticRate === "" ? $("#personalSessionRate").value : automaticRate) || 0);
   const session = {
     id,
     date: $("#personalSessionDate").value,
@@ -3646,7 +3666,7 @@ function savePersonalSession(event) {
     timeText: `${$("#personalSessionStart").value}-${$("#personalSessionEnd").value}`,
     tutor: "Personal",
     student: studentName,
-    packageName: $("#personalSessionPackage").value,
+    packageName: packageLabel,
     packageLabel,
     classType: $("#personalSessionClassType").value,
     mode: $("#personalSessionMode").value ? normalizeModeLabel($("#personalSessionMode").value) : "",
@@ -3862,7 +3882,6 @@ function editPersonalSession(id) {
   $("#personalSessionStart").value = session.start;
   $("#personalSessionEnd").value = session.end;
   $("#personalSessionStudent").value = session.student;
-  $("#personalSessionPackage").value = session.packageName || session.packageLabel;
   $("#personalSessionPackageLabel").value = session.packageLabel || session.packageName || "";
   updatePersonalSessionPackageOptions(session.packageLabel || session.packageName || "");
   $("#personalSessionClassType").value = session.classType;
@@ -4626,8 +4645,8 @@ function resetPersonalSessionForm() {
   $("#personalSessionStart").value = DEFAULT_SESSION_START_TIME;
   $("#personalSessionEnd").value = "";
   $("#personalSessionStudent").value = "";
-  $("#personalSessionPackage").value = "";
   $("#personalSessionPackageLabel").value = "";
+  if ($("#personalSessionPackageDisplay")) $("#personalSessionPackageDisplay").value = "";
   $("#personalSessionClassType").value = "";
   $("#personalSessionMode").value = "";
   $("#personalSessionRate").value = "";

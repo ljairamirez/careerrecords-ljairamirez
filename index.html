@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=74">
+  <link rel="stylesheet" href="style.css?v=75">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -335,13 +335,15 @@
           <label><span>Student</span><input id="personalSessionStudent" list="personalStudentOptions" required placeholder="Type or select"></label>
           <datalist id="personalStudentOptions"></datalist>
           
-          <label><span>Package</span><select id="personalSessionPackage"></select></label>
+          <input type="hidden" id="personalSessionPackageLabel">
           <label>
-            <span>Package / Batch</span>
+            <span>Auto Package</span>
             <input
-              id="personalSessionPackageLabel"
+              id="personalSessionPackageDisplay"
+              class="auto-package-field"
               type="text"
-              placeholder="Example: PACKAGE 1"
+              readonly
+              placeholder="Choose a student"
             >
           </label>
 
@@ -743,6 +745,6 @@
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="script.js?v=141"></script>
+  <script src="script.js?v=142"></script>
 </body>
 </html>

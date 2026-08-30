@@ -3999,3 +3999,9 @@ tbody tr.college-session:not(.group-session) td:first-child {
     min-width: 360px !important;
   }
 }
+.auto-package-field[readonly] {
+  background: #f5f1ff;
+  border-color: #cbbcf4;
+  color: #2e245d;
+  font-weight: 800;
+}
