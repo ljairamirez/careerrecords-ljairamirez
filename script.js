@@ -56,12 +56,13 @@ const graduateTutorRatePackages = [
 const graduateTutorRateModes = ["Virtual", "F2F"];
 const studyBuddyRatePackages = [
   { packageName: "Pair (SB)", amount: 400 },
-  { packageName: "Trio (SB)", amount: 400 },
+  { packageName: "Trio (SB)", amount: 450 },
   { packageName: "Group (4)", amount: 450 },
   { packageName: "Group (5-9)", amount: 500 },
   { packageName: "Group (10+)", amount: 550 }
 ];
 const studyBuddyRateModes = ["Virtual", "F2F", "Hybrid"];
+const RATE_DEFAULTS_VERSION = 1;
 const salaryGradeStepOne2026 = [
   14634, 15522, 16486, 17506, 18581, 19716, 20914, 22423, 24329, 26917, 31705,
   33947, 36125, 38764, 42178, 45694, 49562, 53818, 59153, 66052, 73303, 81796,
@@ -981,6 +982,7 @@ function buildInitialState() {
 }
 
 function ensureStudyBuddyRates(targetState) {
+  const shouldMigrateTrioRate = Number(targetState.rateDefaultsVersion || 0) < RATE_DEFAULTS_VERSION;
   targetState.settings ||= structuredClone(defaultState.settings);
   targetState.settings.packages = normalizePackageOptions([
     ...(targetState.settings.packages || []),
@@ -988,10 +990,8 @@ function ensureStudyBuddyRates(targetState) {
   ]);
   targetState.rates ||= [];
   targetState.rates.forEach((rate) => {
-    if (rate.tutor === CURRENT_RATE_TUTOR && rate.classType === "Group" && rate.packageName === "Group (5 and up)") {
-      rate.packageName = "Group (5-9)";
-      rate.amount = 500;
-    }
+    if (rate.tutor !== CURRENT_RATE_TUTOR || rate.classType !== "Group") return;
+    rate.packageName = normalizeRatePackageName(rate.packageName);
   });
   studyBuddyRatePackages.forEach((ratePackage) => {
     studyBuddyRateModes.forEach((mode) => {
@@ -1002,7 +1002,9 @@ function ensureStudyBuddyRates(targetState) {
         rate.packageName === ratePackage.packageName
       ));
       if (existing) {
-        existing.amount = ratePackage.amount;
+        if (shouldMigrateTrioRate && ratePackage.packageName === "Trio (SB)") {
+          existing.amount = 450;
+        }
         existing.mode = mode;
       } else {
         targetState.rates.push({
@@ -1016,6 +1018,7 @@ function ensureStudyBuddyRates(targetState) {
       }
     });
   });
+  targetState.rateDefaultsVersion = RATE_DEFAULTS_VERSION;
 }
 
 function ensureGraduateTutorRates(targetState) {
@@ -1031,7 +1034,6 @@ function ensureGraduateTutorRates(targetState) {
           rate.packageName === ratePackage.packageName
         ));
         if (existing) {
-          existing.amount = amount;
           existing.mode = mode;
         } else {
           targetState.rates.push({
@@ -2417,7 +2419,7 @@ function renderPersonalReceipt() {
     const body = pkg.sessions.map((session) => (
       `<tr class="claim-row personal-receipt-row personal-row">
         <td>${formatDate(session.date)}</td>
-        <td>${escapeHtml(session.student)}</td>
+        <td>${escapeHtml(session.notes || "")}</td>
         <td>${escapeHtml(formatTimeRange(session.start, session.end))}</td>
         <td>${number(totalHours(session))}</td>
         <td>${money(session.rate)}</td>
@@ -2684,7 +2686,7 @@ function renderClaiming() {
     const body = pkg.sessions.map((session) => (
       `<tr class="claim-row ${sessionRowClass(session)}">
         <td>${formatDate(session.date)}</td>
-        <td>${escapeHtml(session.student)}</td>
+        <td>${escapeHtml(session.notes || "")}</td>
         <td>${number(totalHours(session))}</td>
         <td>${money(session.rate)}</td>
         <td>${money(totalPay(session))}</td>
