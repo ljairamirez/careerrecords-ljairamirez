@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=75">
+  <link rel="stylesheet" href="style.css?v=76">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -171,8 +171,9 @@
           <input type="hidden" id="sessionTutor" value="Lloyd Ramirez">
           <label><span>Student / Program</span><input id="sessionStudent" list="activeStudentOptions" required placeholder="Type or select"></label>
           <datalist id="activeStudentOptions"></datalist>
-          <label><span>Package / Batch</span><select id="sessionPackage"></select></label>
-          <label><span>Claim Package</span><select id="sessionClaimPackage"></select></label>
+          <label><span>Package Type</span><select id="sessionPackage"></select></label>
+          <label><span>Package / Batch</span><input id="sessionClaimPackage" list="sessionClaimPackageOptions" type="text" autocomplete="off" placeholder="Type or select current package"></label>
+          <datalist id="sessionClaimPackageOptions"></datalist>
           <label><span>Class Type</span><select id="sessionClassType"></select></label>
           <label><span>Mode</span><select id="sessionMode"></select></label>
           <label><span>Rate per Hour</span><input id="sessionRate" type="number" min="0" step="0.01"></label>
@@ -228,7 +229,19 @@
         </div>
         <form class="grid-form" id="scheduleForm">
           <input type="hidden" id="scheduleId">
-          <label><span>Day</span><select id="scheduleDay"></select></label>
+          <fieldset class="schedule-day-picker">
+            <legend>Day</legend>
+            <label class="schedule-day-option weekday-option"><input id="scheduleWeekdays" type="checkbox"><span>Weekdays</span></label>
+            <div class="schedule-day-options">
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Monday"><span>Mon</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Tuesday"><span>Tue</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Wednesday"><span>Wed</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Thursday"><span>Thu</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Friday"><span>Fri</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Saturday"><span>Sat</span></label>
+              <label class="schedule-day-option"><input type="checkbox" data-schedule-day value="Sunday"><span>Sun</span></label>
+            </div>
+          </fieldset>
           <label><span>Start</span><input id="scheduleStart" type="time" required></label>
           <label><span>End</span><input id="scheduleEnd" type="time" required></label>
           <label><span>Student / Program</span><input id="scheduleStudent" type="text" list="scheduleStudentOptions" autocomplete="off" required placeholder="Type or select student/group"><datalist id="scheduleStudentOptions"></datalist></label>
@@ -745,6 +758,6 @@
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="script.js?v=143"></script>
+  <script src="script.js?v=146"></script>
 </body>
 </html>

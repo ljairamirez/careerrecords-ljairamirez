@@ -22,6 +22,7 @@ const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
+const REQUESTED_SCHEDULE_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
 const REMOVED_IMPORTED_SCHEDULE_IDS = new Set(["sch16"]);
 const CORRECTED_IMPORTED_SESSION_DATES = {
@@ -47,7 +48,6 @@ let sessionRateManuallyEdited = false;
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const weekdays = days.slice(0, 5);
-const scheduleDayOptions = ["Weekday", ...days];
 const graduateTutorRatePackages = [
   { packageName: "5 Hours", amounts: { "Elem/JHS": 420, SHS: 480, College: 540 } },
   { packageName: "10 Hours", amounts: { "Elem/JHS": 360, SHS: 420, College: 480 } },
@@ -63,6 +63,18 @@ const studyBuddyRatePackages = [
 ];
 const studyBuddyRateModes = ["Virtual", "F2F", "Hybrid"];
 const RATE_DEFAULTS_VERSION = 1;
+const requestedWeeklySchedules = [
+  { id: "preset-pshsmc-g7-mon", student: "PSHS-MC G7 Math", day: "Monday", start: "18:30", end: "19:30" },
+  { id: "preset-pshsmc-g7-thu", student: "PSHS-MC G7 Math", day: "Thursday", start: "18:00", end: "19:00" },
+  { id: "preset-pshsmc-g9-wed", student: "PSHS-MC G9 Math/Stat", day: "Wednesday", start: "17:30", end: "19:00" },
+  { id: "preset-pshsmc-g9-sun", student: "PSHS-MC G9 Math/Stat", day: "Sunday", start: "16:30", end: "18:00" },
+  { id: "preset-pshsmc-g10-sun", student: "PSHS-MC G10 Math", day: "Sunday", start: "18:00", end: "19:00" },
+  { id: "preset-pshsmc-g10-wed", student: "PSHS-MC G10 Math", day: "Wednesday", start: "19:00", end: "20:00" },
+  { id: "preset-pshsmc-g11-sun", student: "PSHS-MC G11 Math", day: "Sunday", start: "19:00", end: "21:00" },
+  { id: "preset-pshsmc-g11-wed", student: "PSHS-MC G11 Math", day: "Wednesday", start: "20:00", end: "21:30" },
+  { id: "preset-valdez-lilah-mon", student: "Valdez, Lilah", day: "Monday", start: "19:00", end: "20:00" },
+  { id: "preset-valdez-lilah-thu", student: "Valdez, Lilah", day: "Thursday", start: "19:00", end: "20:00" }
+];
 const salaryGradeStepOne2026 = [
   14634, 15522, 16486, 17506, 18581, 19716, 20914, 22423, 24329, 26917, 31705,
   33947, 36125, 38764, 42178, 45694, 49562, 53818, 59153, 66052, 73303, 81796,
@@ -1050,6 +1062,52 @@ function ensureGraduateTutorRates(targetState) {
   });
 }
 
+function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
+  if (Number(targetState.requestedScheduleVersion || 0) >= REQUESTED_SCHEDULE_VERSION) return false;
+  targetState.schedules ||= [];
+  targetState.settings ||= structuredClone(defaultState.settings);
+  targetState.settings.students = uniqueNormalizedNames([
+    ...(targetState.settings.students || []),
+    ...requestedWeeklySchedules.map((item) => item.student)
+  ]);
+
+  requestedWeeklySchedules.forEach((preset) => {
+    const existing = targetState.schedules.find((item) => (
+      normalizeStudentName(item.student) === normalizeStudentName(preset.student) &&
+      item.day === preset.day &&
+      !isOneTimeSchedule(item)
+    ));
+    if (existing) {
+      existing.student = preset.student;
+      existing.start = preset.start;
+      existing.end = preset.end;
+      existing.frequency = "Weekly";
+      existing.status = "Active";
+      return;
+    }
+    if (deletedScheduleIds.has(preset.id)) return;
+    targetState.schedules.push({
+      ...preset,
+      tutor: "Lloyd Ramirez",
+      mode: "Virtual",
+      frequency: "Weekly",
+      status: "Active",
+      notes: "",
+      occurrenceDate: "",
+      createdAt: "2026-09-30T00:00:00+08:00"
+    });
+  });
+  targetState.requestedScheduleVersion = REQUESTED_SCHEDULE_VERSION;
+  targetState.schedulePresetMigrationPending = true;
+  return true;
+}
+
+function consumeSchedulePresetMigration(targetState) {
+  const pending = targetState?.schedulePresetMigrationPending === true;
+  if (targetState) delete targetState.schedulePresetMigrationPending;
+  return pending;
+}
+
 function migrateState(inputState) {
   const next = inputState || buildInitialState();
   const imported = window.salarySheetWorkbookData;
@@ -1065,6 +1123,7 @@ function migrateState(inputState) {
   next.settings.modes = ["Virtual", "F2F", "Hybrid"];
   ensureGraduateTutorRates(next);
   ensureStudyBuddyRates(next);
+  ensureRequestedWeeklySchedules(next, deletedScheduleIds);
   next.settings.students = uniqueNormalizedNames(
   (next.settings.students || [])
     .map(normalizeStudentName)
@@ -1187,7 +1246,10 @@ async function initializeCloudSync() {
   cloudSync.enabled = shouldUseCloudSync();
   setupCloudSaveLifecycle();
   renderCloudStatus();
-  if (!cloudSync.enabled) return;
+  if (!cloudSync.enabled) {
+    if (consumeSchedulePresetMigration(state)) saveState();
+    return;
+  }
 
   cloudSync.loading = true;
   cloudSync.error = "";
@@ -1200,10 +1262,12 @@ async function initializeCloudSync() {
     const payload = await response.json();
     if (payload?.state) {
       const remoteState = migrateState(payload.state);
+      const remoteScheduleMigration = consumeSchedulePresetMigration(remoteState);
       cloudSync.lastSavedAt = payload.updatedAt || "";
 
       if (hadLocalStateAtStartup && localStateShouldWinCloud(localStateAtStartup, payload)) {
         state = migrateState(localStateAtStartup);
+        consumeSchedulePresetMigration(state);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         cloudSync.dirty = true;
         cloudSync.saveQueued = true;
@@ -1211,18 +1275,22 @@ async function initializeCloudSync() {
         state = remoteState;
         const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        cloudSync.dirty = cleanedOneTimeSchedules;
-        cloudSync.saveQueued = cleanedOneTimeSchedules;
+        cloudSync.dirty = cleanedOneTimeSchedules || remoteScheduleMigration;
+        cloudSync.saveQueued = cleanedOneTimeSchedules || remoteScheduleMigration;
       }
 
       hydrateControls();
       render();
       migrateLegacyRecordAttachments();
-    } else if (hadLocalStateAtStartup) {
-      cloudSync.dirty = true;
-      cloudSync.saveQueued = true;
     } else {
-      cloudSync.error = "No cloud data found";
+      const localScheduleMigration = consumeSchedulePresetMigration(state);
+      if (hadLocalStateAtStartup || localScheduleMigration) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        cloudSync.dirty = true;
+        cloudSync.saveQueued = true;
+      } else {
+        cloudSync.error = "No cloud data found";
+      }
     }
     await syncPendingRecordAttachments();
   } catch (error) {
@@ -1401,13 +1469,14 @@ async function refreshCloudState() {
       return;
     }
     state = migrateState(payload.state);
+    const schedulePresetMigration = consumeSchedulePresetMigration(state);
     const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     cloudSync.lastSavedAt = payload.updatedAt;
     cloudSync.error = "";
     hydrateControls();
     render();
-    if (cleanedOneTimeSchedules) saveState();
+    if (cleanedOneTimeSchedules || schedulePresetMigration) saveState();
     renderCloudStatus();
   } catch (error) {
     cloudSync.error = error.message || "Cloud refresh failed";
@@ -1683,9 +1752,12 @@ function setupForms() {
     sessionRateManuallyEdited = true;
   });
   $("#sessionStudent").addEventListener("change", () => {
-    updateSessionPackageOptions();
-    setSuggestedRate();
+    sessionRateManuallyEdited = false;
+    const packageLabel = updateSessionPackageOptions("", false, false);
+    applySessionDefaults(packageLabel);
   });
+  $("#sessionClaimPackage")?.addEventListener("change", () => applySessionDefaults($("#sessionClaimPackage").value));
+  setupScheduleDayControls();
 
   $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
   $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
@@ -1795,7 +1867,6 @@ function hydrateControls() {
   fillSelect($("#personalSessionClassType"), state.settings.classTypes);
   fillSelect($("#personalSessionMode"), state.settings.modes);
 
-  fillSelect($("#scheduleDay"), scheduleDayOptions);
   fillDatalist($("#scheduleStudentOptions"), activeStudentNames());
   $("#scheduleTutor").value = "Lloyd Ramirez";
   fillSelect($("#scheduleMode"), state.settings.modes);
@@ -3233,17 +3304,41 @@ function packageSummaries(rows = state.sessions) {
   }).sort((a, b) => a.student.localeCompare(b.student) || (a.packageNo || 999) - (b.packageNo || 999) || a.label.localeCompare(b.label));
 }
 
-function updateSessionPackageOptions(selected = "", blankDefault = false) {
-  const select = $("#sessionClaimPackage");
-  if (!select) return;
-  const student = $("#sessionStudent")?.value || "";
-  const summaries = packageSummaries(state.sessions.filter((session) => session.student === student));
+function updateSessionPackageOptions(selected = "", blankDefault = false, preserveCurrent = true) {
+  const input = $("#sessionClaimPackage");
+  const list = $("#sessionClaimPackageOptions");
+  if (!input || !list) return "";
+  const student = normalizeStudentName($("#sessionStudent")?.value || "");
+  const summaries = packageSummaries(state.sessions.filter((session) => normalizeStudentName(session.student) === student));
   const existing = summaries.map((pkg) => pkg.label);
   const numbers = existing.map(packageNumber).filter(Boolean);
   const next = `PACKAGE ${Math.max(0, ...numbers) + 1}`;
   const openPackage = summaries.find((pkg) => pkg.sessions.some(isOpenStatus))?.label;
   const options = [...new Set([...existing, next, selected].filter(Boolean))];
-  fillSelect(select, options.length ? options : ["PACKAGE 1"], blankDefault ? "" : selected || openPackage || next || options[0] || "PACKAGE 1");
+  fillDatalist(list, options.length ? options : ["PACKAGE 1"]);
+  const current = preserveCurrent ? input.value.trim() : "";
+  const value = blankDefault ? "" : normalizePackageEntryLabel(selected || current || openPackage || next || options[0] || "PACKAGE 1");
+  input.value = value;
+  return value;
+}
+
+function applySessionDefaults(packageLabel = "") {
+  if ($("#sessionId")?.value) return;
+  const student = normalizeStudentName($("#sessionStudent")?.value || "");
+  if (!student) return;
+  const rows = state.sessions.filter((session) => normalizeStudentName(session.student) === student);
+  const matchingRows = packageLabel
+    ? rows.filter((session) => samePackageLabel(packageGroupLabel(session), packageLabel))
+    : [];
+  const source = [...(matchingRows.length ? matchingRows : rows)]
+    .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.start || "").localeCompare(a.start || ""))[0];
+  if (!source) return;
+
+  $("#sessionPackage").value = source.packageName || "";
+  $("#sessionClassType").value = source.classType || "";
+  $("#sessionMode").value = source.mode || "";
+  sessionRateManuallyEdited = false;
+  setSuggestedRate({ force: true });
 }
 
 function resetPersonalPackageLabelForStudent() {
@@ -3614,7 +3709,7 @@ function saveSession(event) {
   const hours = Number($("#sessionHours").value || 0);
   const rate = Number($("#sessionRate").value || 0);
   const selectedPackageName = $("#sessionPackage").value;
-  const selectedPackageLabel = $("#sessionClaimPackage").value || "PACKAGE 1";
+  const selectedPackageLabel = normalizePackageEntryLabel($("#sessionClaimPackage").value) || "PACKAGE 1";
   const selectedClassType = $("#sessionClassType").value;
   const studentCount = existing && existing.packageName === selectedPackageName && existing.classType === selectedClassType
     ? Number(existing.studentCount || inferStudentCountFromPackage(selectedPackageName, selectedClassType))
@@ -3764,9 +3859,13 @@ function saveRate(event) {
 function saveSchedule(event) {
   event.preventDefault();
   const existing = state.schedules.find((item) => item.id === $("#scheduleId").value);
-  const selectedDay = $("#scheduleDay").value;
-  if (existing && selectedDay === "Weekday") {
-    window.alert("Weekday can only be used when adding a new schedule. Choose one day when editing.");
+  const scheduleDays = selectedScheduleDays();
+  if (!scheduleDays.length) {
+    window.alert("Select at least one schedule day.");
+    return;
+  }
+  if (existing && scheduleDays.length !== 1) {
+    window.alert("Choose one day when editing an individual schedule.");
     return;
   }
   if (existing && !window.confirm("Save the updated schedule details?")) return;
@@ -3783,7 +3882,6 @@ function saveSchedule(event) {
   };
   if (!scheduleBase.student) return;
   ensureStudent(scheduleBase.student, "schedule");
-  const scheduleDays = selectedDay === "Weekday" ? weekdays : [selectedDay];
   const baseDate = new Date();
   scheduleDays.forEach((day) => {
     const draft = { ...scheduleBase, day };
@@ -3926,7 +4024,7 @@ function editSchedule(id) {
   const item = state.schedules.find((schedule) => schedule.id === id);
   if (!item) return;
   $("#scheduleId").value = item.id;
-  $("#scheduleDay").value = item.day;
+  setScheduleDays([item.day]);
   $("#scheduleStart").value = item.start;
   $("#scheduleEnd").value = item.end;
   $("#scheduleStudent").value = item.student;
@@ -4674,11 +4772,42 @@ function resetScheduleForm() {
   $("#scheduleId").value = "";
   $("#scheduleStart").value = "";
   $("#scheduleEnd").value = "";
-  $("#scheduleDay").value = "";
+  setScheduleDays([]);
   $("#scheduleStudent").value = "";
   $("#scheduleMode").value = "";
   $("#scheduleFrequency").value = "";
   if ($("#scheduleStatus")) $("#scheduleStatus").value = "";
+}
+
+function setupScheduleDayControls() {
+  $("#scheduleWeekdays")?.addEventListener("change", (event) => {
+    const checked = event.currentTarget.checked;
+    $$('[data-schedule-day]').forEach((input) => {
+      if (weekdays.includes(input.value)) input.checked = checked;
+    });
+    syncScheduleWeekdayToggle();
+  });
+  $$('[data-schedule-day]').forEach((input) => input.addEventListener("change", syncScheduleWeekdayToggle));
+}
+
+function selectedScheduleDays() {
+  return $$('[data-schedule-day]:checked').map((input) => input.value);
+}
+
+function setScheduleDays(selected = []) {
+  const selectedDays = new Set(selected);
+  $$('[data-schedule-day]').forEach((input) => {
+    input.checked = selectedDays.has(input.value);
+  });
+  syncScheduleWeekdayToggle();
+}
+
+function syncScheduleWeekdayToggle() {
+  const toggle = $("#scheduleWeekdays");
+  if (!toggle) return;
+  const selectedWeekdays = $$('[data-schedule-day]').filter((input) => weekdays.includes(input.value) && input.checked).length;
+  toggle.checked = selectedWeekdays === weekdays.length;
+  toggle.indeterminate = selectedWeekdays > 0 && selectedWeekdays < weekdays.length;
 }
 
 function setSuggestedRate({ force = false } = {}) {
@@ -4878,7 +5007,9 @@ function isGroupSession(session) {
 }
 
 function isGroupName(name) {
-  return /\b(upis|group|stat|booster|b2030|boards review)\b/i.test(String(name || ""));
+  const text = String(name || "");
+  return /\b(upis|group|stat|booster|b2030|boards review)\b/i.test(text) ||
+    /\bpshs[\s-]*mc\b/i.test(text);
 }
 
 function totalHours(session) {

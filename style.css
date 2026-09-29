@@ -16,6 +16,10 @@
   --purple-soft: #f0eaff;
   --purple-line: #d6c8f2;
   --gold: #b68118;
+  --group-accent: #5b5bd6;
+  --group-soft: #f1f0ff;
+  --group-hover: #e8e6ff;
+  --group-line: #aaa5ed;
   --red: #b64040;
   --blue: #0052CC;
   --shadow: 0 12px 28px rgba(0, 82, 204, 0.10);
@@ -441,6 +445,62 @@ textarea:focus {
   grid-column: span 2;
 }
 
+.schedule-day-picker {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.schedule-day-picker legend {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.schedule-day-options {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(44px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.schedule-day-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-day-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.schedule-day-option input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+.weekday-option {
+  width: max-content;
+  min-width: 116px;
+}
+
 .primary,
 .success,
 .ghost,
@@ -745,15 +805,15 @@ tbody tr.peak-row-3:hover {
 }
 
 tbody tr.group-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total) {
-  background: #fffaf0;
+  background: var(--group-soft);
 }
 
 tbody tr.group-session:not(.claimed-row):not(.claiming-row):not(.claim-package-head):not(.claim-package-total):hover {
-  background: #fff2d9;
+  background: var(--group-hover);
 }
 
 tbody tr.group-session td:first-child {
-  border-left: 5px solid var(--gold);
+  border-left: 5px solid var(--group-accent);
 }
 
 tbody tr.individual-session td:first-child {
@@ -1441,8 +1501,8 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .schedule-block.group-session {
-  border-left-color: var(--gold);
-  background: #fff7e6;
+  border-left-color: var(--group-accent);
+  background: var(--group-soft);
 }
 
 .schedule-block.one-time-session {
@@ -1647,8 +1707,8 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .claim-package-head.group-session td {
-  background: #fff6df;
-  border-color: #dca333;
+  background: var(--group-soft);
+  border-color: var(--group-line);
 }
 
 .claim-row.claiming-row {
@@ -1660,11 +1720,11 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .claim-row.group-session {
-  background: #fffdf6;
+  background: #faf9ff;
 }
 
 .claim-row.group-session:hover {
-  background: #fff8e8;
+  background: var(--group-hover);
 }
 
 .claim-row td:first-child {
@@ -1676,11 +1736,11 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .claim-row.group-session td:first-child {
-  border-left-color: #dca333;
+  border-left-color: var(--group-line);
 }
 
 .claim-row.group-session td:last-child {
-  border-right-color: #dca333;
+  border-right-color: var(--group-line);
 }
 
 .claim-package-head strong,
@@ -1704,16 +1764,16 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .claim-package-total.group-session td {
-  background: #fff8e8;
-  border-bottom-color: #dca333;
+  background: var(--group-hover);
+  border-bottom-color: var(--group-line);
 }
 
 .claim-package-total.group-session td:first-child {
-  border-left-color: #dca333;
+  border-left-color: var(--group-line);
 }
 
 .claim-package-total.group-session td:last-child {
-  border-right-color: #dca333;
+  border-right-color: var(--group-line);
 }
 
 .group-summary {
@@ -3272,6 +3332,14 @@ tbody tr.college-session:not(.group-session) td:first-child {
   .week-scroll {
     min-width: 0;
     max-width: 100%;
+  }
+
+  .schedule-day-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .schedule-day-option {
+    padding-inline: 5px;
   }
 
   .topbar {
