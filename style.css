@@ -2243,6 +2243,11 @@ tbody tr.college-session:not(.group-session) td:first-child {
     0 5px 12px rgba(31, 44, 50, 0.12) !important;
 }
 
+.schedule-block.group-session:not(.one-time-session):not(.as-needed-session) {
+  border-left-color: #15803d !important;
+  background: #ecfdf3 !important;
+}
+
 .schedule-block.one-time-session {
   border-left-color: #db2777 !important;
   background: #fff1f8 !important;
