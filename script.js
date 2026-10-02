@@ -23,6 +23,7 @@ const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
 const REQUESTED_SCHEDULE_VERSION = 2;
+const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
 const REMOVED_IMPORTED_SCHEDULE_IDS = new Set(["sch16"]);
 const CORRECTED_IMPORTED_SESSION_DATES = {
@@ -1109,10 +1110,31 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
   return true;
 }
 
-function consumeSchedulePresetMigration(targetState) {
-  const pending = targetState?.schedulePresetMigrationPending === true;
-  if (targetState) delete targetState.schedulePresetMigrationPending;
+function consumePendingStateMigration(targetState) {
+  const pending = targetState?.schedulePresetMigrationPending === true ||
+    targetState?.personalPackageMergePending === true;
+  if (targetState) {
+    delete targetState.schedulePresetMigrationPending;
+    delete targetState.personalPackageMergePending;
+  }
   return pending;
+}
+
+function ensurePersonalPackageMerges(targetState) {
+  if (Number(targetState.personalPackageMergeVersion || 0) >= PERSONAL_PACKAGE_MERGE_VERSION) return false;
+  let changed = false;
+  (targetState.personalSessions || []).forEach((session) => {
+    const isMegan = normalizeStudentName(session.student) === "Nidea, Megan";
+    const label = String(session.packageLabel || session.packageName || "").trim();
+    const isOpen = !isClaimedStatus(session) && session.status !== "Closed" && session.status !== "Cancelled";
+    if (!isMegan || !/^B$/i.test(label) || !isOpen) return;
+    session.packageLabel = "PACKAGE 4";
+    session.packageName = "PACKAGE 4";
+    changed = true;
+  });
+  targetState.personalPackageMergeVersion = PERSONAL_PACKAGE_MERGE_VERSION;
+  if (changed) targetState.personalPackageMergePending = true;
+  return changed;
 }
 
 function migrateState(inputState) {
@@ -1175,6 +1197,7 @@ function migrateState(inputState) {
     status: session.status || "Pending",
     packageLabel: session.packageLabel || "PACKAGE 1"
   }));
+  ensurePersonalPackageMerges(next);
   next.records = (next.records || []).map((record) => ({
     ...record,
     id: record.id || uid(),
@@ -1254,7 +1277,7 @@ async function initializeCloudSync() {
   setupCloudSaveLifecycle();
   renderCloudStatus();
   if (!cloudSync.enabled) {
-    if (consumeSchedulePresetMigration(state)) saveState();
+    if (consumePendingStateMigration(state)) saveState();
     return;
   }
 
@@ -1269,12 +1292,12 @@ async function initializeCloudSync() {
     const payload = await response.json();
     if (payload?.state) {
       const remoteState = migrateState(payload.state);
-      const remoteScheduleMigration = consumeSchedulePresetMigration(remoteState);
+      const remoteStateMigration = consumePendingStateMigration(remoteState);
       cloudSync.lastSavedAt = payload.updatedAt || "";
 
       if (hadLocalStateAtStartup && localStateShouldWinCloud(localStateAtStartup, payload)) {
         state = migrateState(localStateAtStartup);
-        consumeSchedulePresetMigration(state);
+        consumePendingStateMigration(state);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         cloudSync.dirty = true;
         cloudSync.saveQueued = true;
@@ -1282,16 +1305,16 @@ async function initializeCloudSync() {
         state = remoteState;
         const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        cloudSync.dirty = cleanedOneTimeSchedules || remoteScheduleMigration;
-        cloudSync.saveQueued = cleanedOneTimeSchedules || remoteScheduleMigration;
+        cloudSync.dirty = cleanedOneTimeSchedules || remoteStateMigration;
+        cloudSync.saveQueued = cleanedOneTimeSchedules || remoteStateMigration;
       }
 
       hydrateControls();
       render();
       migrateLegacyRecordAttachments();
     } else {
-      const localScheduleMigration = consumeSchedulePresetMigration(state);
-      if (hadLocalStateAtStartup || localScheduleMigration) {
+      const localStateMigration = consumePendingStateMigration(state);
+      if (hadLocalStateAtStartup || localStateMigration) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         cloudSync.dirty = true;
         cloudSync.saveQueued = true;
@@ -1476,14 +1499,14 @@ async function refreshCloudState() {
       return;
     }
     state = migrateState(payload.state);
-    const schedulePresetMigration = consumeSchedulePresetMigration(state);
+    const pendingStateMigration = consumePendingStateMigration(state);
     const cleanedOneTimeSchedules = removeLapsedOneTimeSchedules(new Date(), false);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     cloudSync.lastSavedAt = payload.updatedAt;
     cloudSync.error = "";
     hydrateControls();
     render();
-    if (cleanedOneTimeSchedules || schedulePresetMigration) saveState();
+    if (cleanedOneTimeSchedules || pendingStateMigration) saveState();
     renderCloudStatus();
   } catch (error) {
     cloudSync.error = error.message || "Cloud refresh failed";
