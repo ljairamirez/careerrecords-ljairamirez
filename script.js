@@ -24,6 +24,7 @@ const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
 const REQUESTED_SCHEDULE_VERSION = 2;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
+const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
 const REMOVED_IMPORTED_SCHEDULE_IDS = new Set(["sch16"]);
 const CORRECTED_IMPORTED_SESSION_DATES = {
@@ -1112,10 +1113,12 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
 
 function consumePendingStateMigration(targetState) {
   const pending = targetState?.schedulePresetMigrationPending === true ||
-    targetState?.personalPackageMergePending === true;
+    targetState?.personalPackageMergePending === true ||
+    targetState?.billReadingCarryPending === true;
   if (targetState) {
     delete targetState.schedulePresetMigrationPending;
     delete targetState.personalPackageMergePending;
+    delete targetState.billReadingCarryPending;
   }
   return pending;
 }
@@ -1216,6 +1219,7 @@ function migrateState(inputState) {
     attachmentUrl: record.attachmentUrl || ""
   }));
   next.management = normalizeManagementState(next.management);
+  ensureBillReadingCarryForward(next);
   next.cvProfile = normalizeCvProfile(next.cvProfile);
   next.cvSections = normalizeCvSections(next.cvSections || buildDefaultCvSections());
   ensureUpggArimaongaEntry(next);
@@ -4105,11 +4109,19 @@ function computeBillDevice(previous, current, rate) {
 }
 
 function nextMonthValue(month) {
-  const base = month ? new Date(month + "-01T00:00:00") : new Date();
-  if (Number.isNaN(base.getTime())) return new Date().toISOString().slice(0, 7);
-  base.setMonth(base.getMonth() + 1);
-  return base.toISOString().slice(0, 7);
+  return shiftMonthValue(month, 1);
 }
+
+function previousMonthValue(month) {
+  return shiftMonthValue(month, -1);
+}
+
+function shiftMonthValue(month, offset) {
+  const source = /^\d{4}-\d{2}$/.test(String(month || "")) ? month : new Date().toISOString().slice(0, 7);
+  const [year, monthNumber] = source.split("-").map(Number);
+  return new Date(Date.UTC(year, monthNumber - 1 + offset, 1)).toISOString().slice(0, 7);
+}
+
 function normalizeBillPurchase(purchase = {}) {
   return {
     id: purchase.id || uid(),
@@ -4137,6 +4149,27 @@ function normalizeManagementState(management = {}) {
     })),
     bills: (management.bills || []).map(normalizeManagementBill)
   };
+}
+
+function ensureBillReadingCarryForward(targetState) {
+  if (Number(targetState.billReadingCarryVersion || 0) >= BILL_READING_CARRY_VERSION) return false;
+  const bills = targetState.management?.bills || [];
+  const billsByMonth = new Map(bills.map((bill) => [bill.month, bill]));
+  let changed = false;
+  bills.forEach((bill) => {
+    const previousBill = billsByMonth.get(previousMonthValue(bill.month));
+    if (!previousBill) return;
+    ["aircon", "refrigerator"].forEach((key) => {
+      const previousCurrent = Number(previousBill[key]?.current || 0);
+      if (Number(bill[key]?.previous || 0) !== 0 || previousCurrent <= 0) return;
+      bill[key].previous = previousCurrent;
+      Object.assign(bill[key], computeBillDevice(bill[key].previous, bill[key].current, bill[key].rate));
+      changed = true;
+    });
+  });
+  targetState.billReadingCarryVersion = BILL_READING_CARRY_VERSION;
+  if (changed) targetState.billReadingCarryPending = true;
+  return changed;
 }
 
 function currentManagementMonth() {
@@ -4226,7 +4259,13 @@ function renderManagementBills() {
 function loadManagementBillForm(month, setMonth = true) {
   if (!$("#managementBillForm")) return;
   const targetMonth = month || $("#billMonth")?.value || currentManagementMonth();
-  const bill = managementBillForMonth(targetMonth) || normalizeManagementBill({ month: targetMonth });
+  const savedBill = managementBillForMonth(targetMonth);
+  const bill = normalizeManagementBill(savedBill || { month: targetMonth });
+  const previousBill = managementBillForMonth(previousMonthValue(targetMonth));
+  if (previousBill) {
+    if (!bill.aircon.previous) bill.aircon.previous = Number(previousBill.aircon?.current || 0);
+    if (!bill.refrigerator.previous) bill.refrigerator.previous = Number(previousBill.refrigerator?.current || 0);
+  }
   if (setMonth && $("#billMonth")) $("#billMonth").value = targetMonth;
   setInputValue("billRent", bill.rent);
   setInputValue("billWater", bill.water);
