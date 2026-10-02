@@ -22,7 +22,7 @@ const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
-const REQUESTED_SCHEDULE_VERSION = 1;
+const REQUESTED_SCHEDULE_VERSION = 2;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
 const REMOVED_IMPORTED_SCHEDULE_IDS = new Set(["sch16"]);
 const CORRECTED_IMPORTED_SESSION_DATES = {
@@ -73,7 +73,10 @@ const requestedWeeklySchedules = [
   { id: "preset-pshsmc-g11-sun", student: "PSHS-MC G11 Math", day: "Sunday", start: "19:00", end: "21:00" },
   { id: "preset-pshsmc-g11-wed", student: "PSHS-MC G11 Math", day: "Wednesday", start: "20:00", end: "21:30" },
   { id: "preset-valdez-lilah-mon", student: "Valdez, Lilah", day: "Monday", start: "19:00", end: "20:00" },
-  { id: "preset-valdez-lilah-thu", student: "Valdez, Lilah", day: "Thursday", start: "19:00", end: "20:00" }
+  { id: "preset-valdez-lilah-thu", student: "Valdez, Lilah", day: "Thursday", start: "19:00", end: "20:00" },
+  { id: "preset-amparo-mia-wed", student: "Amparo, Mia", day: "Wednesday", start: "14:00", end: "15:00", mode: "F2F", requestedVersion: 2 },
+  { id: "preset-nidea-megan-wed", student: "Nidea, Megan", day: "Wednesday", start: "15:00", end: "16:30", mode: "F2F", requestedVersion: 2 },
+  { id: "preset-salandanan-teo-wed", student: "Salandanan, Teo", day: "Wednesday", start: "16:30", end: "17:30", mode: "F2F", requestedVersion: 2 }
 ];
 const salaryGradeStepOne2026 = [
   14634, 15522, 16486, 17506, 18581, 19716, 20914, 22423, 24329, 26917, 31705,
@@ -1078,23 +1081,27 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
       !isOneTimeSchedule(item)
     ));
     if (existing) {
-      existing.student = preset.student;
-      existing.start = preset.start;
-      existing.end = preset.end;
-      existing.frequency = "Weekly";
-      existing.status = "Active";
+      if (Number(preset.requestedVersion || 1) === REQUESTED_SCHEDULE_VERSION) {
+        existing.student = preset.student;
+        existing.start = preset.start;
+        existing.end = preset.end;
+        existing.mode = preset.mode || existing.mode || "Virtual";
+        existing.frequency = "Weekly";
+        existing.status = "Active";
+      }
       return;
     }
     if (deletedScheduleIds.has(preset.id)) return;
+    const { requestedVersion, ...schedulePreset } = preset;
     targetState.schedules.push({
-      ...preset,
+      ...schedulePreset,
       tutor: "Lloyd Ramirez",
-      mode: "Virtual",
+      mode: preset.mode || "Virtual",
       frequency: "Weekly",
       status: "Active",
       notes: "",
       occurrenceDate: "",
-      createdAt: "2026-09-30T00:00:00+08:00"
+      createdAt: "2026-10-02T00:00:00+08:00"
     });
   });
   targetState.requestedScheduleVersion = REQUESTED_SCHEDULE_VERSION;
