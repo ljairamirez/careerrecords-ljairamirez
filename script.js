@@ -22,7 +22,7 @@ const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
-const REQUESTED_SCHEDULE_VERSION = 2;
+const REQUESTED_SCHEDULE_VERSION = 3;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
@@ -74,8 +74,8 @@ const requestedWeeklySchedules = [
   { id: "preset-pshsmc-g10-wed", student: "PSHS-MC G10 Math", day: "Wednesday", start: "19:00", end: "20:00" },
   { id: "preset-pshsmc-g11-sun", student: "PSHS-MC G11 Math", day: "Sunday", start: "19:00", end: "21:00" },
   { id: "preset-pshsmc-g11-wed", student: "PSHS-MC G11 Math", day: "Wednesday", start: "20:00", end: "21:30" },
-  { id: "preset-valdez-lilah-mon", student: "Valdez, Lilah", day: "Monday", start: "19:00", end: "20:00" },
-  { id: "preset-valdez-lilah-thu", student: "Valdez, Lilah", day: "Thursday", start: "19:00", end: "20:00" },
+  { id: "preset-valdez-lilah-mon", student: "Valdez, Psalms", day: "Monday", start: "19:30", end: "20:30", requestedVersion: 3 },
+  { id: "preset-valdez-lilah-thu", student: "Valdez, Psalms", day: "Thursday", start: "19:30", end: "20:30", requestedVersion: 3 },
   { id: "preset-amparo-mia-wed", student: "Amparo, Mia", day: "Wednesday", start: "14:00", end: "15:00", mode: "F2F", requestedVersion: 2 },
   { id: "preset-nidea-megan-wed", student: "Nidea, Megan", day: "Wednesday", start: "15:00", end: "16:30", mode: "F2F", requestedVersion: 2 },
   { id: "preset-salandanan-teo-wed", student: "Salandanan, Teo", day: "Wednesday", start: "16:30", end: "17:30", mode: "F2F", requestedVersion: 2 }
@@ -1078,9 +1078,12 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
 
   requestedWeeklySchedules.forEach((preset) => {
     const existing = targetState.schedules.find((item) => (
-      normalizeStudentName(item.student) === normalizeStudentName(preset.student) &&
-      item.day === preset.day &&
-      !isOneTimeSchedule(item)
+      item.id === preset.id ||
+      (
+        normalizeStudentName(item.student) === normalizeStudentName(preset.student) &&
+        item.day === preset.day &&
+        !isOneTimeSchedule(item)
+      )
     ));
     if (existing) {
       if (Number(preset.requestedVersion || 1) === REQUESTED_SCHEDULE_VERSION) {
@@ -1103,9 +1106,19 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
       status: "Active",
       notes: "",
       occurrenceDate: "",
-      createdAt: "2026-10-02T00:00:00+08:00"
+      createdAt: "2026-10-06T00:00:00+08:00"
     });
   });
+  const obsoleteValdezName = "Valdez, Lilah";
+  const hasObsoleteValdezRecords = [
+    ...(targetState.sessions || []),
+    ...(targetState.personalSessions || []),
+    ...targetState.schedules
+  ].some((item) => normalizeStudentName(item.student) === obsoleteValdezName);
+  if (!hasObsoleteValdezRecords) {
+    targetState.settings.students = targetState.settings.students
+      .filter((student) => normalizeStudentName(student) !== obsoleteValdezName);
+  }
   targetState.requestedScheduleVersion = REQUESTED_SCHEDULE_VERSION;
   targetState.schedulePresetMigrationPending = true;
   return true;
