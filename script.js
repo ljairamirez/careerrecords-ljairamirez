@@ -2173,13 +2173,6 @@ function scheduleProjectionRate(item, fallbackRate = 300) {
   return fallbackRate;
 }
 
-function weekKeyForDate(date) {
-  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const offset = (copy.getDay() + 6) % 7;
-  copy.setDate(copy.getDate() - offset);
-  return localIsoDate(copy);
-}
-
 function scheduledProjectionForMonth(range, hourlyRate = 300) {
   const scheduleItems = activeScheduleItems()
     .filter(scheduleStatusAllowsProjection)
@@ -2188,7 +2181,6 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
   let weeklyHours = 0;
   let oneTimeHours = 0;
   let pay = 0;
-  const pshsMc9Occurrences = [];
   const hours = scheduleItems.reduce((total, item) => {
     const duration = computeHours(item.start, item.end);
     const rate = scheduleProjectionRate(item, hourlyRate);
@@ -2202,15 +2194,6 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
       return total;
     }
 
-    if (isPshsMc9Schedule(item)) {
-      for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
-        if (dayName(localIsoDate(date)) === item.day) {
-          pshsMc9Occurrences.push({ date: new Date(date), duration, rate });
-        }
-      }
-      return total;
-    }
-
     weeklyHours += duration;
     let occurrences = 0;
     for (let date = new Date(start); localIsoDate(date) <= range.end; date.setDate(date.getDate() + 1)) {
@@ -2219,21 +2202,12 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
     pay += occurrences * duration * rate;
     return total + occurrences * duration;
   }, 0);
-  const pshsByWeek = new Map();
-  pshsMc9Occurrences.forEach((occurrence) => {
-    const key = weekKeyForDate(occurrence.date);
-    const current = pshsByWeek.get(key);
-    if (!current || occurrence.duration > current.duration) pshsByWeek.set(key, occurrence);
-  });
-  const pshsHours = sum([...pshsByWeek.values()], (occurrence) => occurrence.duration);
-  pay += sum([...pshsByWeek.values()], (occurrence) => occurrence.duration * occurrence.rate);
-  if (pshsByWeek.size) weeklyHours += Math.max(...[...pshsByWeek.values()].map((occurrence) => occurrence.duration));
   return {
-    hours: hours + pshsHours,
+    hours,
     weeklyHours,
     oneTimeHours,
     pay,
-    rate: hours + pshsHours ? pay / (hours + pshsHours) : hourlyRate
+    rate: hours ? pay / hours : hourlyRate
   };
 }
 
