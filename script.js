@@ -22,7 +22,7 @@ const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
-const REQUESTED_SCHEDULE_VERSION = 3;
+const REQUESTED_SCHEDULE_VERSION = 4;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
@@ -66,8 +66,10 @@ const studyBuddyRatePackages = [
 const studyBuddyRateModes = ["Virtual", "F2F", "Hybrid"];
 const RATE_DEFAULTS_VERSION = 1;
 const requestedWeeklySchedules = [
-  { id: "preset-pshsmc-g7-mon", student: "PSHS-MC G7 Math", day: "Monday", start: "18:30", end: "19:30" },
-  { id: "preset-pshsmc-g7-thu", student: "PSHS-MC G7 Math", day: "Thursday", start: "18:00", end: "19:00" },
+  { id: "preset-pshsmc-g7-mon", student: "PSHS-MC G7 Math G1", day: "Monday", start: "18:30", end: "19:30", requestedVersion: 4 },
+  { id: "preset-pshsmc-g7-thu", student: "PSHS-MC G7 Math G1", day: "Thursday", start: "18:00", end: "19:00", requestedVersion: 4 },
+  { id: "preset-pshsmc-g7-g2-tue", student: "PSHS-MC G7 Math G2", day: "Tuesday", start: "18:30", end: "19:30", requestedVersion: 4 },
+  { id: "preset-pshsmc-g7-g2-thu", student: "PSHS-MC G7 Math G2", day: "Thursday", start: "19:00", end: "20:00", requestedVersion: 4 },
   { id: "preset-pshsmc-g9-wed", student: "PSHS-MC G9 Math/Stat", day: "Wednesday", start: "17:30", end: "19:00" },
   { id: "preset-pshsmc-g9-sun", student: "PSHS-MC G9 Math/Stat", day: "Sunday", start: "16:30", end: "18:00" },
   { id: "preset-pshsmc-g10-sun", student: "PSHS-MC G10 Math", day: "Sunday", start: "18:00", end: "19:00" },
@@ -1106,19 +1108,20 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
       status: "Active",
       notes: "",
       occurrenceDate: "",
-      createdAt: "2026-10-06T00:00:00+08:00"
+      createdAt: "2026-10-07T00:00:00+08:00"
     });
   });
-  const obsoleteValdezName = "Valdez, Lilah";
-  const hasObsoleteValdezRecords = [
-    ...(targetState.sessions || []),
-    ...(targetState.personalSessions || []),
-    ...targetState.schedules
-  ].some((item) => normalizeStudentName(item.student) === obsoleteValdezName);
-  if (!hasObsoleteValdezRecords) {
-    targetState.settings.students = targetState.settings.students
-      .filter((student) => normalizeStudentName(student) !== obsoleteValdezName);
-  }
+  ["Valdez, Lilah", "PSHS-MC G7 Math"].forEach((obsoleteName) => {
+    const hasObsoleteRecords = [
+      ...(targetState.sessions || []),
+      ...(targetState.personalSessions || []),
+      ...targetState.schedules
+    ].some((item) => normalizeStudentName(item.student) === obsoleteName);
+    if (!hasObsoleteRecords) {
+      targetState.settings.students = targetState.settings.students
+        .filter((student) => normalizeStudentName(student) !== obsoleteName);
+    }
+  });
   targetState.requestedScheduleVersion = REQUESTED_SCHEDULE_VERSION;
   targetState.schedulePresetMigrationPending = true;
   return true;
