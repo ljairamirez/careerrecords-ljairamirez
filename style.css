@@ -1785,6 +1785,59 @@ tbody tr.college-session:not(.group-session) td:first-child {
   border-bottom: 1px solid var(--line);
 }
 
+.student-package-total td,
+.student-current-total td {
+  background: #f5f7fa;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.student-package-total td:first-child,
+.student-current-total td:first-child {
+  border-left: 0;
+}
+
+.student-package-total span {
+  margin-left: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.student-mobile-totals {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .student-package-total,
+  .student-current-total {
+    display: none;
+  }
+
+  .student-mobile-totals {
+    display: grid;
+    padding: 10px 12px;
+    gap: 10px;
+    background: #f5f7fa;
+    border-top: 1px solid var(--line);
+  }
+
+  .student-mobile-totals > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  .student-mobile-totals small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+  }
+}
+
 .release-panel {
   max-width: 1120px;
   margin: 0 auto;

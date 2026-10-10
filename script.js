@@ -47,6 +47,7 @@ const MANAGEMENT_ACCESS_HASH = "d81c16dd903dd64d1880d5c1d396bff60f25740ee8bd420b
 
 let currentActiveView = "dashboard";
 let sessionRateManuallyEdited = false;
+let personalDefaultsKey = "";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const weekdays = days.slice(0, 5);
@@ -3307,7 +3308,24 @@ function groupedPanels(key, rows, comparator = null) {
     const rowHtml = (session) => (
       `<tr class="${sessionRowClass(session)}"><td>${formatDate(session.date)}</td><td>${escapeHtml(dayName(session.date))}</td><td>${escapeHtml(formatTimeRange(session.start, session.end))}</td><td>${escapeHtml(session.student)}</td><td>${escapeHtml(packageLabel(session))}</td><td>${escapeHtml(session.classType)}</td><td>${number(totalHours(session))}</td><td>${money(session.rate)}</td><td>${money(totalPay(session))}</td><td>${statusPill(session.status)}</td></tr>`
     );
-    const tableHtml = (list) => `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Time</th><th>Student</th><th>Package</th><th>Type</th><th>Hours</th><th>Rate</th><th>Total</th><th>Status</th></tr></thead><tbody>${list.map(rowHtml).join("") || emptyRow(10)}</tbody></table></div>`;
+    const tableHtml = (list, showPackageTotals = false) => {
+      const packages = showPackageTotals ? packageSummaries(list) : [];
+      const body = showPackageTotals ? packages.map((pkg) => {
+        const current = summarize(pkg.sessions.filter((session) => session.status !== "Cancelled"));
+        return `${list.filter((session) => pkg.sessions.includes(session)).map(rowHtml).join("")}<tr class="student-package-total"><td colspan="6">${escapeHtml(pkg.label)} total <span>${current.sessions} ${current.sessions === 1 ? "session" : "sessions"}</span></td><td>${number(current.hours)}</td><td></td><td>${money(current.pay)}</td><td></td></tr>`;
+      }).join("") : list.map(rowHtml).join("");
+      const current = summarize(list.filter((session) => session.status !== "Cancelled"));
+      const footer = showPackageTotals && packages.length > 1
+        ? `<tfoot><tr class="student-current-total"><td colspan="6">Current packages total</td><td>${number(current.hours)}</td><td></td><td>${money(current.pay)}</td><td></td></tr></tfoot>`
+        : "";
+      const mobileTotals = showPackageTotals && packages.length
+        ? `<div class="student-mobile-totals">${packages.map((pkg) => {
+          const summary = summarize(pkg.sessions.filter((session) => session.status !== "Cancelled"));
+          return `<div><span>${escapeHtml(pkg.label)} total<small>${number(summary.hours)} hours</small></span><strong>${money(summary.pay)}</strong></div>`;
+        }).join("")}${packages.length > 1 ? `<div><span>Current packages total</span><strong>${money(current.pay)}</strong></div>` : ""}</div>`
+        : "";
+      return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Day</th><th>Time</th><th>Student</th><th>Package</th><th>Type</th><th>Hours</th><th>Rate</th><th>Total</th><th>Status</th></tr></thead><tbody>${body || emptyRow(10)}</tbody>${footer}</table></div>${mobileTotals}`;
+    };
     const openItems = items.filter((session) => !isClaimedStatus(session));
     const claimedItems = items.filter(isClaimedStatus);
     const claimedPay = sum(claimedItems, totalPay);
@@ -3320,7 +3338,7 @@ function groupedPanels(key, rows, comparator = null) {
     return `<section class="panel">
       <div class="panel-head"><h2>${escapeHtml(name)}</h2></div>
       <div class="group-summary"><span class="pill">${totals.sessions} sessions</span><span class="pill">${number(totals.hours)} hours</span><span class="pill">${money(totals.pay)}</span></div>
-      ${tableHtml(openItems)}
+      ${tableHtml(openItems, true)}
       ${claimedDetails}
     </section>`;
   }).join("") || `<section class="panel"><p class="empty">No grouped logs yet.</p></section>`;
@@ -3384,6 +3402,7 @@ function resetPersonalPackageLabelForStudent() {
   const input = $("#personalSessionPackageLabel");
   if (input && !$("#personalSessionId")?.value) input.value = "";
   updatePersonalSessionPackageOptions();
+  applyPersonalSessionDefaults();
 }
 
 function updatePersonalSessionPackageOptions(selected = "") {
@@ -3398,19 +3417,50 @@ function updatePersonalSessionPackageOptions(selected = "") {
 }
 
 function personalPackageIsOpen(pkg) {
-  return Boolean(pkg?.sessions?.some((session) => session.status !== "Closed" && !isClaimedStatus(session)));
+  return Boolean(pkg?.sessions?.some((session) => session.status !== "Closed" && isOpenStatus(session)));
+}
+
+function currentPersonalPackage(student) {
+  const name = normalizeStudentName(student);
+  const rows = (state.personalSessions || []).filter((session) => normalizeStudentName(session.student) === name);
+  const latest = (pkg) => pkg.sessions.map((session) => `${session.date || ""} ${session.start || ""}`).sort().at(-1) || "";
+  return packageSummaries(rows).filter(personalPackageIsOpen)
+    .sort((a, b) => latest(b).localeCompare(latest(a)) || (b.packageNo || 0) - (a.packageNo || 0))[0];
+}
+
+function applyPersonalSessionDefaults() {
+  if ($("#personalSessionId")?.value) return;
+  const student = normalizeStudentName($("#personalSessionStudent")?.value || "");
+  if (!student) {
+    personalDefaultsKey = "";
+    return;
+  }
+  const openPackage = currentPersonalPackage(student);
+  const rows = openPackage?.sessions || (state.personalSessions || []).filter((session) => normalizeStudentName(session.student) === student);
+  const source = rows.filter((session) => session.status !== "Cancelled")
+    .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.start || "").localeCompare(a.start || ""))[0];
+  if (!source) {
+    personalDefaultsKey = "";
+    return;
+  }
+  const defaultsKey = `${student}::${packageGroupLabel(source)}`;
+  if (personalDefaultsKey === defaultsKey) return;
+  personalDefaultsKey = defaultsKey;
+  $("#personalSessionClassType").value = source.classType || "";
+  $("#personalSessionMode").value = source.mode || "";
+  setPersonalSuggestedRate();
 }
 
 function nextPersonalPackageLabel(selected = "", options = {}) {
   selected = normalizePackageEntryLabel(selected);
   const student = normalizeStudentName($("#personalSessionStudent")?.value.trim() || "");
   if (!student) return selected || "";
-  const summaries = packageSummaries((state.personalSessions || []).filter((session) => session.student === student));
-  const selectedPackage = summaries.find((pkg) => samePackageLabel(pkg.label, selected));
   if (options.editing && selected) return selected;
-  if (selected && (!selectedPackage || personalPackageIsOpen(selectedPackage))) return selected;
-  const openPackage = summaries.find(personalPackageIsOpen)?.label;
+  const openPackage = currentPersonalPackage(student)?.label;
   if (openPackage) return openPackage;
+  const summaries = packageSummaries((state.personalSessions || []).filter((session) => normalizeStudentName(session.student) === student));
+  const selectedPackage = summaries.find((pkg) => samePackageLabel(pkg.label, selected));
+  if (selected && !selectedPackage) return selected;
   const numbers = summaries.map((pkg) => packageNumber(pkg.label)).filter(Boolean);
   return `PACKAGE ${Math.max(0, ...numbers) + 1}`;
 }
@@ -4813,6 +4863,7 @@ function resetSessionForm() {
 }
 
 function resetPersonalSessionForm() {
+  personalDefaultsKey = "";
   if (!$("#personalSessionForm")) return;
   $("#personalSessionForm").reset();
   $("#personalSessionId").value = "";
