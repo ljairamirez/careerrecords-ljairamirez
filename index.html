@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="Assets/jlcr-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="Assets/jlcr-apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=80">
+  <link rel="stylesheet" href="style.css?v=81">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -244,7 +244,7 @@
           </fieldset>
           <label><span>Start</span><input id="scheduleStart" type="time" required></label>
           <label><span>End</span><input id="scheduleEnd" type="time" required></label>
-          <label><span>Student / Program</span><input id="scheduleStudent" type="text" list="scheduleStudentOptions" autocomplete="off" required placeholder="Type or select student/group"><datalist id="scheduleStudentOptions"></datalist></label>
+          <label><span>Student / Program / Activity</span><input id="scheduleStudent" type="text" list="scheduleStudentOptions" autocomplete="off" required placeholder="Student, group, or personal activity"><datalist id="scheduleStudentOptions"></datalist></label>
           <input type="hidden" id="scheduleTutor" value="Lloyd Ramirez">
           <label><span>Mode</span><select id="scheduleMode"></select></label>
           <label><span>Frequency</span><select id="scheduleFrequency"></select></label>
@@ -256,7 +256,7 @@
         <div class="panel-head"><h2>Schedule Table</h2></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Day</th><th>Time</th><th>Student</th><th>Mode</th><th>Frequency</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+            <thead><tr><th>Day</th><th>Time</th><th>Student / Activity</th><th>Mode / Activity</th><th>Frequency</th><th>Status</th><th>Notes</th><th></th></tr></thead>
             <tbody id="scheduleRows"></tbody>
           </table>
         </div>
@@ -758,6 +758,6 @@
   <script src="workbook-data.js?v=9"></script>
   <script src="current-state.js?v=2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="script.js?v=154"></script>
+  <script src="script.js?v=155"></script>
 </body>
 </html>

@@ -13,7 +13,9 @@ const functions = [
   "isClaimedStatus", "isClaimingStatus", "isOpenStatus", "personalPackageIsOpen",
   "currentPersonalPackage", "nextPersonalPackageLabel", "applyPersonalSessionDefaults",
   "personalRateForMode", "setPersonalSuggestedRate", "updatePersonalSessionPackageOptions",
-  "resetPersonalPackageLabelForStudent", "groupedPanels"
+  "resetPersonalPackageLabelForStudent", "groupedPanels", "isPersonalTrainingSchedule",
+  "scheduleStatusAllowsProjection", "scheduleTypeClass", "syncStudentRecords", "ensureStudent",
+  "activeStudentNames", "personalStudentNames", "studentKey", "sortNames", "sortStudentRecords"
 ];
 
 function context(rows) {
@@ -122,4 +124,24 @@ test("current package subtotals include pending and closed logs but exclude coll
   assert.match(current, /Current packages total<\/td><td>4<\/td><td><\/td><td>PHP 1750.00/);
   assert(!current.includes("PACKAGE 1 total"));
   assert.equal((html.match(/student-package-total/g) || []).length, 2);
+});
+
+test("GYM - AF stays a personal activity and never enters student lists or projections", () => {
+  const { scope } = context([]);
+  assert.equal(scope.normalizeStudentName("AF, GYM -"), "GYM - AF");
+  assert.equal(scope.normalizeStudentName("gym - af"), "GYM - AF");
+  assert.equal(scope.scheduleTypeClass({ student: "GYM - AF", mode: "Virtual" }), "personal-training-session");
+  assert.equal(scope.scheduleStatusAllowsProjection({ student: "AF, GYM -", status: "Active" }), false);
+  scope.state.settings = { students: ["GYM - AF", "AF, GYM -", "Nidea, Megan"] };
+  scope.state.studentRecords = [{ name: "GYM - AF", key: "GYM - AF", status: "Active" }];
+  scope.syncStudentRecords();
+  assert.equal(JSON.stringify(scope.state.settings.students), JSON.stringify(["Nidea, Megan"]));
+  assert.equal(scope.state.studentRecords.length, 1);
+  assert.equal(scope.state.studentRecords[0].name, "Nidea, Megan");
+  scope.ensureStudent("GYM - AF", "schedule");
+  assert.equal(scope.state.studentRecords.length, 1);
+  assert(!scope.activeStudentNames().includes("GYM - AF"));
+  scope.state.personalSessions = [row("PACKAGE 1", "Pending", "2026-10-10", { student: "GYM - AF" })];
+  assert.equal(scope.personalStudentNames().length, 0);
+  assert.equal(scope.state.personalSessions.length, 1);
 });

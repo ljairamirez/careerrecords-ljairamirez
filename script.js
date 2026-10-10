@@ -1278,7 +1278,7 @@ function migrateState(inputState) {
     .map((item) => ({
     ...item,
     student: normalizeStudentName(item.student),
-    mode: normalizeModeLabel(item.mode),
+    mode: isPersonalTrainingSchedule(item) ? "" : normalizeModeLabel(item.mode),
     occurrenceDate: item.occurrenceDate || ""
   }));
   next.rates = (next.rates || []).map((rate) => ({ ...rate, mode: normalizeModeLabel(rate.mode) }));
@@ -2095,7 +2095,7 @@ function scheduleStatusAllowsProjection(item) {
 }
 
 function isPersonalTrainingSchedule(item) {
-  return item?.personalTraining === true || /^GYM\s*-\s*AF$/i.test(String(item?.student || "").trim());
+  return item?.personalTraining === true || normalizeProgramAlias(item?.student) === "GYM - AF";
 }
 
 function scheduleMinutes(timeText) {
@@ -2664,11 +2664,12 @@ function renderSchedule() {
   $("#scheduleRows").innerHTML = rows.map((item) => {
     const lapsedOneTime = oneTimeScheduleIsLapsed(item);
     const statusText = lapsedOneTime ? "Done" : item.status;
-    return `<tr class="${lapsedOneTime ? "lapsed-one-time-row" : ""}">
+    const personalTraining = isPersonalTrainingSchedule(item);
+    return `<tr class="${personalTraining ? "personal-training-row" : ""} ${lapsedOneTime ? "lapsed-one-time-row" : ""}">
       <td>${escapeHtml(item.day)}</td>
       <td>${escapeHtml(formatScheduleTimeRange(item.start, item.end))}</td>
       <td>${escapeHtml(item.student)}</td>
-      <td><span class="mode-badge ${normalizeMode(item.mode)}">${escapeHtml(item.mode)}</span></td>
+      <td>${personalTraining ? '<span class="mode-badge personal-training-badge">Personal training</span>' : `<span class="mode-badge ${normalizeMode(item.mode)}">${escapeHtml(item.mode)}</span>`}</td>
       <td>${escapeHtml(item.frequency)}</td>
       <td>${escapeHtml(statusText)}</td>
       <td>${escapeHtml(item.notes || "")}</td>
@@ -2735,7 +2736,7 @@ function scheduleBlocksForDay(items, startHour, endHour, pixelsPerHour) {
     const height = Math.max(34, (block.end - block.start) * pixelsPerHour - 4);
     const left = `calc(${(block.column / columnCount) * 100}% + 6px)`;
     const width = `calc(${100 / columnCount}% - 12px)`;
-    return `<div class="schedule-block ${normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(formatScheduleTimeRange(block.item.start, block.item.end))}</span></div>`;
+    return `<div class="schedule-block ${isPersonalTrainingSchedule(block.item) ? "" : normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(formatScheduleTimeRange(block.item.start, block.item.end))}</span></div>`;
   }).join("");
 }
 
@@ -3603,7 +3604,7 @@ function syncStudentRecords(targetState = state, options = {}) {
   ].forEach((value) => {
     const normalizedName = normalizeStudentName(value);
     let key = studentKey(normalizedName);
-    if (!normalizedName || key === "subs") return;
+    if (!normalizedName || key === "subs" || isPersonalTrainingSchedule({ student: normalizedName })) return;
     if (!normalizedName.includes(",") && surnameFragments.has(key)) return;
     const fullKey = aliasToFullKey.get(key) || key;
     if (seen.has(fullKey)) return;
@@ -3636,7 +3637,7 @@ function updateStudentRecord(key, changes) {
 function ensureStudent(name, source = "session log") {
   const cleanName = String(name || "").trim();
 
-  if (!cleanName) return;
+  if (!cleanName || isPersonalTrainingSchedule({ student: cleanName })) return;
 
   state.settings.students ||= [];
   state.studentRecords ||= [];
@@ -3674,7 +3675,7 @@ function activeStudentNames() {
 }
 
 function personalStudentNames() {
-  return sortNames([...(new Set((state.personalSessions || []).map((session) => session.student).filter(Boolean)))]);
+  return sortNames([...(new Set((state.personalSessions || []).map((session) => session.student).filter((name) => name && !isPersonalTrainingSchedule({ student: name }))))]);
 }
 
 function sortNames(values) {
@@ -3971,6 +3972,10 @@ function saveSchedule(event) {
     createdAt: existing?.createdAt || new Date().toISOString()
   };
   if (!scheduleBase.student) return;
+  if (scheduleBase.personalTraining) {
+    scheduleBase.student = "GYM - AF";
+    scheduleBase.mode = "";
+  }
   if (!scheduleBase.personalTraining) ensureStudent(scheduleBase.student, "schedule");
   const baseDate = new Date();
   scheduleDays.forEach((day) => {
@@ -5402,6 +5407,7 @@ function normalizeProgramAlias(value) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
   return text
+    .replace(/^(?:GYM\s*-\s*AF|AF,\s*GYM\s*-?)$/i, "GYM - AF")
     .replace(/^(?:Year\s*2,\s*DOST\s+Review|DOST\s+Review\s+Year\s*2)$/i, "DOST Review Year2")
     .replace(/\bCal\s*Sci\b/gi, "CalNatSci")
     .replace(/\bCalNatSci\s+Stat\b/gi, "CalNatSci Stat")

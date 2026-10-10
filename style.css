@@ -2297,8 +2297,27 @@ tbody tr.college-session:not(.group-session) td:first-child {
 }
 
 .schedule-block.personal-training-session {
-  border-left-color: #64748b !important;
-  background: #f1f5f9 !important;
+  border-left-color: #c4b5fd !important;
+  background: #6d4bd1 !important;
+  color: #fff !important;
+}
+
+.schedule-block.personal-training-session strong,
+.schedule-block.personal-training-session span {
+  color: #fff;
+}
+
+.personal-training-badge {
+  background: #6d4bd1;
+  color: #fff;
+}
+
+.personal-training-row td {
+  background: #fff;
+}
+
+.personal-training-row td:first-child {
+  border-left: 5px solid #6d4bd1;
 }
 
 .schedule-block.group-session:not(.one-time-session):not(.as-needed-session) {
