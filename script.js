@@ -22,7 +22,7 @@ const ATTACHMENT_DB_NAME = "salary-sheet-attachments";
 const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
-const REQUESTED_SCHEDULE_VERSION = 4;
+const REQUESTED_SCHEDULE_VERSION = 5;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
@@ -80,7 +80,16 @@ const requestedWeeklySchedules = [
   { id: "preset-valdez-lilah-thu", student: "Valdez, Psalms", day: "Thursday", start: "19:30", end: "20:30", requestedVersion: 3 },
   { id: "preset-amparo-mia-wed", student: "Amparo, Mia", day: "Wednesday", start: "14:00", end: "15:00", mode: "F2F", requestedVersion: 2 },
   { id: "preset-nidea-megan-wed", student: "Nidea, Megan", day: "Wednesday", start: "15:00", end: "16:30", mode: "F2F", requestedVersion: 2 },
-  { id: "preset-salandanan-teo-wed", student: "Salandanan, Teo", day: "Wednesday", start: "16:30", end: "17:30", mode: "F2F", requestedVersion: 2 }
+  { id: "preset-salandanan-teo-wed", student: "Salandanan, Teo", day: "Wednesday", start: "16:30", end: "17:30", mode: "F2F", requestedVersion: 2 },
+  ...days.map((day) => ({
+    id: `preset-gym-af-${day.toLowerCase()}`,
+    student: "GYM - AF",
+    day,
+    start: ["Saturday", "Sunday"].includes(day) ? "07:00" : ["Monday", "Friday"].includes(day) ? "21:00" : "12:00",
+    end: ["Saturday", "Sunday"].includes(day) ? "08:00" : ["Monday", "Friday"].includes(day) ? "22:00" : "13:00",
+    personalTraining: true,
+    requestedVersion: 5
+  }))
 ];
 const salaryGradeStepOne2026 = [
   14634, 15522, 16486, 17506, 18581, 19716, 20914, 22423, 24329, 26917, 31705,
@@ -1075,7 +1084,7 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
   targetState.settings ||= structuredClone(defaultState.settings);
   targetState.settings.students = uniqueNormalizedNames([
     ...(targetState.settings.students || []),
-    ...requestedWeeklySchedules.map((item) => item.student)
+    ...requestedWeeklySchedules.filter((item) => !item.personalTraining).map((item) => item.student)
   ]);
 
   requestedWeeklySchedules.forEach((preset) => {
@@ -1092,7 +1101,8 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
         existing.student = preset.student;
         existing.start = preset.start;
         existing.end = preset.end;
-        existing.mode = preset.mode || existing.mode || "Virtual";
+        existing.mode = preset.personalTraining ? "" : preset.mode || existing.mode || "Virtual";
+        if (preset.personalTraining) existing.personalTraining = true;
         existing.frequency = "Weekly";
         existing.status = "Active";
       }
@@ -1103,12 +1113,12 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
     targetState.schedules.push({
       ...schedulePreset,
       tutor: "Lloyd Ramirez",
-      mode: preset.mode || "Virtual",
+      mode: preset.personalTraining ? "" : preset.mode || "Virtual",
       frequency: "Weekly",
       status: "Active",
-      notes: "",
+      notes: preset.personalTraining ? "Personal training" : "",
       occurrenceDate: "",
-      createdAt: "2026-10-07T00:00:00+08:00"
+      createdAt: "2026-10-10T00:00:00+08:00"
     });
   });
   ["Valdez, Lilah", "PSHS-MC G7 Math"].forEach((obsoleteName) => {
@@ -2078,8 +2088,13 @@ function isOneTimeSchedule(item) {
 }
 
 function scheduleStatusAllowsProjection(item) {
+  if (isPersonalTrainingSchedule(item)) return false;
   const status = String(item?.status || "Active").toLowerCase();
   return status === "active" || status === "one-time";
+}
+
+function isPersonalTrainingSchedule(item) {
+  return item?.personalTraining === true || /^GYM\s*-\s*AF$/i.test(String(item?.student || "").trim());
 }
 
 function scheduleMinutes(timeText) {
@@ -2675,7 +2690,7 @@ function renderSchedule() {
 }
 
 function renderWeekly() {
-  const startHour = 8;
+  const startHour = 7;
   const endHour = 23;
   const pixelsPerHour = 56;
   const rows = endHour - startHour;
@@ -3901,11 +3916,12 @@ function saveSchedule(event) {
     mode: $("#scheduleMode").value ? normalizeModeLabel($("#scheduleMode").value) : "",
     frequency: $("#scheduleFrequency").value,
     status: existing?.status || "Active",
+    personalTraining: existing?.personalTraining === true || isPersonalTrainingSchedule({ student: $("#scheduleStudent").value }),
     notes: $("#scheduleNotes").value.trim(),
     createdAt: existing?.createdAt || new Date().toISOString()
   };
   if (!scheduleBase.student) return;
-  ensureStudent(scheduleBase.student, "schedule");
+  if (!scheduleBase.personalTraining) ensureStudent(scheduleBase.student, "schedule");
   const baseDate = new Date();
   scheduleDays.forEach((day) => {
     const draft = { ...scheduleBase, day };
@@ -5047,6 +5063,7 @@ function sessionTypeClass(session) {
 }
 
 function scheduleTypeClass(item) {
+  if (isPersonalTrainingSchedule(item)) return "personal-training-session";
   const typeClass = isGroupName(item.student) ? "group-session" : "individual-session";
   const frequency = String(item.frequency || "");
   const status = String(item.status || "");
@@ -5326,7 +5343,7 @@ function extractTrailingStudentInfo(name) {
 function isProgramName(name) {
   const value = String(name || "").trim();
   if (!value) return false;
-  if (/^(UPIS|B2030 G9|GROUP TUTORIALS|BOARDS REVIEW|STAT LEAP|STAT BOOSTER|PSHS|SUMMER|BOOSTER[- ]STAT|CALNATSCI STAT)/i.test(value)) return true;
+  if (/^(DOST\b|GYM\b|UPIS|B2030 G9|GROUP TUTORIALS|BOARDS REVIEW|STAT LEAP|STAT BOOSTER|PSHS|SUMMER|BOOSTER[- ]STAT|CALNATSCI STAT)/i.test(value)) return true;
   return value === value.toUpperCase() && /\b(UPIS|B2030|GROUP|TUTORIALS|REVIEW|STAT|BOOSTER|BOARDS|CALNATSCI)\b/.test(value);
 }
 
@@ -5334,6 +5351,7 @@ function normalizeProgramAlias(value) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
   return text
+    .replace(/^(?:Year\s*2,\s*DOST\s+Review|DOST\s+Review\s+Year\s*2)$/i, "DOST Review Year2")
     .replace(/\bCal\s*Sci\b/gi, "CalNatSci")
     .replace(/\bCalNatSci\s+Stat\b/gi, "CalNatSci Stat")
     .replace(/^STAT LEAP$/i, "B2030 G9")

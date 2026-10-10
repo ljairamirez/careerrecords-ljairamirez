@@ -1391,7 +1391,7 @@ tbody tr.college-session:not(.group-session) td:first-child {
   display: grid;
   position: relative;
   grid-template-columns: 72px repeat(7, minmax(120px, 1fr));
-  grid-template-rows: 40px repeat(15, 56px);
+  grid-template-rows: 40px repeat(16, 56px);
   gap: 0;
   min-width: 960px;
   padding: 12px;
@@ -1423,7 +1423,7 @@ tbody tr.college-session:not(.group-session) td:first-child {
   position: relative;
   border-right: 1px solid var(--line);
   background: #fbfcfc;
-  min-height: 840px;
+  min-height: 896px;
   overflow: hidden;
 }
 
@@ -2241,6 +2241,11 @@ tbody tr.college-session:not(.group-session) td:first-child {
   box-shadow:
     inset 0 0 0 2px rgba(122, 76, 194, 0.18),
     0 5px 12px rgba(31, 44, 50, 0.12) !important;
+}
+
+.schedule-block.personal-training-session {
+  border-left-color: #64748b !important;
+  background: #f1f5f9 !important;
 }
 
 .schedule-block.group-session:not(.one-time-session):not(.as-needed-session) {
@@ -3385,7 +3390,7 @@ tbody tr.college-session:not(.group-session) td:first-child {
     width: 760px;
     min-width: 760px;
     grid-template-columns: 52px repeat(7, 96px);
-    grid-template-rows: 34px repeat(15, 50px);
+    grid-template-rows: 34px repeat(16, 56px);
     padding: 8px;
   }
 
