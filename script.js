@@ -4120,8 +4120,8 @@ function editSchedule(id) {
   if (!item) return;
   $("#scheduleId").value = item.id;
   setScheduleDays([item.day]);
-  $("#scheduleStart").value = item.start;
-  $("#scheduleEnd").value = item.end;
+  fillScheduleTimeOptions($("#scheduleStart"), item.start);
+  fillScheduleTimeOptions($("#scheduleEnd"), item.end);
   $("#scheduleStudent").value = item.student;
   $("#scheduleTutor").value = item.tutor;
   $("#scheduleMode").value = item.mode;
@@ -4898,11 +4898,25 @@ function resetRecordForm() {
   $("#recordBullets").value = "";
 }
 
+function fillScheduleTimeOptions(select, selected = "") {
+  const times = Array.from({ length: 96 }, (_, index) => {
+    const minutes = index * 15;
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  });
+  // Keep a previously saved off-interval time when editing, without rounding it.
+  const existingTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(selected) && !times.includes(selected);
+  if (existingTime) times.push(selected);
+  select.innerHTML = `<option value=""></option>${times.sort().map((time) => (
+    `<option value="${time}">${formatScheduleTime(time)}${existingTime && time === selected ? " (existing)" : ""}</option>`
+  )).join("")}`;
+  select.value = selected;
+}
+
 function resetScheduleForm() {
   $("#scheduleForm").reset();
   $("#scheduleId").value = "";
-  $("#scheduleStart").value = "";
-  $("#scheduleEnd").value = "";
+  fillScheduleTimeOptions($("#scheduleStart"));
+  fillScheduleTimeOptions($("#scheduleEnd"));
   setScheduleDays([]);
   $("#scheduleStudent").value = "";
   $("#scheduleMode").value = "";
