@@ -4899,8 +4899,8 @@ function resetRecordForm() {
 }
 
 function fillScheduleTimeOptions(select, selected = "") {
-  const times = Array.from({ length: 61 }, (_, index) => {
-    const minutes = 8 * 60 + index * 15;
+  const times = Array.from({ length: 31 }, (_, index) => {
+    const minutes = 8 * 60 + index * 30;
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   });
   // Preserve older saved times outside the new choices when editing.
