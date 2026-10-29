@@ -13,20 +13,21 @@ for (const name of ["fillScheduleTimeOptions", "formatScheduleTime"]) {
   vm.runInContext(source.slice(start, end), scope);
 }
 
-test("new schedules offer exactly 96 quarter-hour choices and a blank default", () => {
+test("new schedules offer quarter-hour choices from 8 AM through 11 PM only", () => {
   const select = {};
   scope.fillScheduleTimeOptions(select);
   const times = [...select.innerHTML.matchAll(/value="(\d\d:\d\d)"/g)].map((match) => match[1]);
-  assert.equal(times.length, 96);
-  assert.equal(times[0], "00:00");
-  assert.equal(times.at(-1), "23:45");
+  assert.equal(times.length, 61);
+  assert.equal(times[0], "08:00");
+  assert.equal(times.at(-1), "23:00");
   times.forEach((time, index) => {
     const [hour, minute] = time.split(":").map(Number);
-    assert.equal(hour * 60 + minute, index * 15);
+    assert.equal(hour * 60 + minute, 8 * 60 + index * 15);
   });
   assert.equal(select.value, "");
-  assert.match(select.innerHTML, />12:00 AM<\/option>/);
+  assert.match(select.innerHTML, />8:00 AM<\/option>/);
   assert.match(select.innerHTML, />12:15 PM<\/option>/);
+  assert.match(select.innerHTML, />11:00 PM<\/option>/);
 });
 
 test("editing keeps the selected time and does not round old schedule data", () => {
@@ -36,8 +37,16 @@ test("editing keeps the selected time and does not round old schedule data", () 
   scope.fillScheduleTimeOptions(select, "18:10");
   assert.equal(select.value, "18:10");
   assert.match(select.innerHTML, /value="18:10">6:10 PM \(existing\)<\/option>/);
+  for (const time of ["07:00", "23:30"]) {
+    scope.fillScheduleTimeOptions(select, time);
+    assert.equal(select.value, time);
+    assert(select.innerHTML.includes(`value="${time}"`));
+    assert(select.innerHTML.includes("(existing)"));
+  }
   scope.fillScheduleTimeOptions(select);
   assert(!select.innerHTML.includes("18:10"));
+  assert(!select.innerHTML.includes("07:00"));
+  assert(!select.innerHTML.includes("23:30"));
   assert.equal(select.value, "");
 });
 

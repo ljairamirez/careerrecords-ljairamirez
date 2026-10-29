@@ -4899,11 +4899,11 @@ function resetRecordForm() {
 }
 
 function fillScheduleTimeOptions(select, selected = "") {
-  const times = Array.from({ length: 96 }, (_, index) => {
-    const minutes = index * 15;
+  const times = Array.from({ length: 61 }, (_, index) => {
+    const minutes = 8 * 60 + index * 15;
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   });
-  // Keep a previously saved off-interval time when editing, without rounding it.
+  // Preserve older saved times outside the new choices when editing.
   const existingTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(selected) && !times.includes(selected);
   if (existingTime) times.push(selected);
   select.innerHTML = `<option value=""></option>${times.sort().map((time) => (
