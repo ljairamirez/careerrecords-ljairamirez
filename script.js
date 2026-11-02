@@ -1819,6 +1819,7 @@ function setupForms() {
   });
   $("#sessionClaimPackage")?.addEventListener("change", () => applySessionDefaults($("#sessionClaimPackage").value));
   setupScheduleDayControls();
+  setupScheduleTimeControls();
 
   $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
   $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
@@ -2189,8 +2190,8 @@ function scheduleProjectionRate(item, fallbackRate = 300) {
   return fallbackRate;
 }
 
-function scheduledProjectionForMonth(range, hourlyRate = 300) {
-  const scheduleItems = activeScheduleItems()
+function scheduledProjectionForMonth(range, hourlyRate = 300, baseDate = new Date()) {
+  const scheduleItems = activeScheduleItems(baseDate)
     .filter(scheduleStatusAllowsProjection)
     .filter((item) => item.start && item.end);
   const start = isoToLocalDate(range.start);
@@ -2201,8 +2202,10 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
     const duration = computeHours(item.start, item.end);
     const rate = scheduleProjectionRate(item, hourlyRate);
     if (isOneTimeSchedule(item)) {
-      const occurrence = scheduleOccurrenceThisWeek(item);
-      if (occurrence && occurrence.end >= new Date() && occurrence.date >= range.start && occurrence.date <= range.end) {
+      const occurrence = item.occurrenceDate
+        ? scheduleOccurrenceOnDate(item, item.occurrenceDate)
+        : nextOneTimeOccurrence(item, baseDate);
+      if (occurrence && occurrence.end >= baseDate && occurrence.date >= range.start && occurrence.date <= range.end) {
         oneTimeHours += duration;
         pay += duration * rate;
         return total + duration;
@@ -2224,6 +2227,23 @@ function scheduledProjectionForMonth(range, hourlyRate = 300) {
     oneTimeHours,
     pay,
     rate: hours ? pay / hours : hourlyRate
+  };
+}
+
+function currentMonthEarningsProjection(range = currentMonthWindow(), hourlyRate = 300, baseDate = new Date()) {
+  const loggedRows = currentMonthToDateSessions(range);
+  const logged = summarize(loggedRows);
+  const tomorrow = isoToLocalDate(range.today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const remaining = scheduledProjectionForMonth({
+    start: localIsoDate(tomorrow),
+    end: range.end
+  }, hourlyRate, baseDate);
+  return {
+    pay: logged.pay + remaining.pay,
+    logged,
+    remaining,
+    loggedDays: new Set(loggedRows.map((row) => row.date)).size
   };
 }
 
@@ -2302,10 +2322,9 @@ function renderDashboard() {
   const currentMonthKey = currentMonthRange.today.slice(0, 7);
   const nextMonthRange = nextMonthWindow();
   const nextMonthProjection = scheduledProjectionForMonth(nextMonthRange, 300);
-  const monthToDateTotals = summarize(currentMonthToDateSessions(currentMonthRange));
-  const currentMonthLoggedDays = new Set(currentMonthToDateSessions(currentMonthRange).map((row) => row.date)).size || 0;
-  const monthDailyPace = monthToDateTotals.pay / Math.max(1, currentMonthRange.elapsedDays);
-  const monthlyProjection = Math.max(monthToDateTotals.pay, monthDailyPace * currentMonthRange.daysInMonth);
+  const currentProjection = currentMonthEarningsProjection(currentMonthRange, 300);
+  const currentMonthLoggedDays = currentProjection.loggedDays;
+  const monthlyProjection = currentProjection.pay;
   const projectionGrade = salaryGradeProjection(monthlyProjection);
   const claimed = claimedPayrollTotal();
   const forClaiming = sum(allRows.filter(isClaimingStatus), totalPay);
@@ -2369,7 +2388,7 @@ function renderDashboard() {
 
   $("#projectionMetrics").innerHTML = `<article class="projection-card">
     <div class="projection-lines">
-      <div><span>${escapeHtml(currentMonthLabel)}</span><strong>${money(monthlyProjection)}</strong></div>
+      <div><span>${escapeHtml(currentMonthLabel)}</span><strong title="${escapeAttr(`${money(currentProjection.logged.pay)} logged + ${money(currentProjection.remaining.pay)} remaining schedule`)}">${money(monthlyProjection)}</strong></div>
       <div><span>${escapeHtml(monthName(nextMonthRange.month))}</span><strong>${money(nextMonthProjection.pay)}</strong></div>
     </div>
     <div class="salary-grade-chip">
@@ -4898,7 +4917,34 @@ function resetRecordForm() {
   $("#recordBullets").value = "";
 }
 
-function fillScheduleTimeOptions(select, selected = "") {
+function setupScheduleTimeControls() {
+  window.matchMedia("(max-width: 700px)").addEventListener("change", () => {
+    ["#scheduleStart", "#scheduleEnd"].forEach((selector) => {
+      const control = $(selector);
+      if (control) fillScheduleTimeOptions(control, control.value);
+    });
+  });
+}
+
+function fillScheduleTimeOptions(control, selected = "") {
+  const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const tag = mobile ? "SELECT" : "INPUT";
+  let select = control;
+  if (control.tagName !== tag) {
+    select = document.createElement(tag.toLowerCase());
+    [...control.attributes].forEach(({ name, value }) => {
+      if (!["type", "min", "max", "step"].includes(name)) select.setAttribute(name, value);
+    });
+    control.replaceWith(select);
+  }
+  if (!mobile) {
+    select.type = "time";
+    select.step = "60";
+    select.min = selected && selected < "08:00" ? selected : "08:00";
+    select.max = selected && selected > "23:00" ? selected : "23:00";
+    select.value = selected;
+    return;
+  }
   const times = Array.from({ length: 31 }, (_, index) => {
     const minutes = 8 * 60 + index * 30;
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;

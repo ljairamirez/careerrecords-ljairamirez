@@ -5,7 +5,8 @@ const test = require("node:test");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../script.js"), "utf8").replace(/\r\n/g, "\n");
-const scope = vm.createContext({});
+const scope = vm.createContext({ mobile: true });
+scope.window = { matchMedia: () => ({ matches: scope.mobile }) };
 for (const name of ["fillScheduleTimeOptions", "formatScheduleTime"]) {
   const start = source.indexOf(`function ${name}(`);
   const end = source.indexOf("\nfunction ", start + 1);
@@ -13,8 +14,9 @@ for (const name of ["fillScheduleTimeOptions", "formatScheduleTime"]) {
   vm.runInContext(source.slice(start, end), scope);
 }
 
-test("new schedules offer half-hour choices from 8 AM through 11 PM only", () => {
-  const select = {};
+test("mobile schedules offer half-hour choices from 8 AM through 11 PM only", () => {
+  scope.mobile = true;
+  const select = { tagName: "SELECT" };
   scope.fillScheduleTimeOptions(select);
   const times = [...select.innerHTML.matchAll(/value="(\d\d:\d\d)"/g)].map((match) => match[1]);
   assert.equal(times.length, 31);
@@ -31,7 +33,8 @@ test("new schedules offer half-hour choices from 8 AM through 11 PM only", () =>
 });
 
 test("editing keeps the selected time and does not round old schedule data", () => {
-  const select = {};
+  scope.mobile = true;
+  const select = { tagName: "SELECT" };
   scope.fillScheduleTimeOptions(select, "18:45");
   assert.equal(select.value, "18:45");
   assert.match(select.innerHTML, /value="18:45">6:45 PM \(existing\)<\/option>/);
@@ -52,10 +55,27 @@ test("editing keeps the selected time and does not round old schedule data", () 
   assert.equal(select.value, "");
 });
 
-test("only schedule time controls change; both session logs retain time inputs", () => {
+test("desktop scheduling accepts typed minutes without a half-hour restriction", () => {
+  scope.mobile = false;
+  const input = { tagName: "INPUT" };
+  scope.fillScheduleTimeOptions(input, "18:17");
+  assert.equal(input.type, "time");
+  assert.equal(input.step, "60");
+  assert.equal(input.value, "18:17");
+  assert.equal(input.min, "08:00");
+  assert.equal(input.max, "23:00");
+  scope.fillScheduleTimeOptions(input, "07:00");
+  assert.equal(input.value, "07:00");
+  assert.equal(input.min, "07:00");
+  scope.fillScheduleTimeOptions(input);
+  assert.equal(input.value, "");
+  assert.equal(input.min, "08:00");
+});
+
+test("session logs retain their original unrestricted time inputs", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   for (const id of ["scheduleStart", "scheduleEnd"]) {
-    assert.match(html, new RegExp(`<select id="${id}" required>`));
+    assert.match(html, new RegExp(`<input id="${id}" type="time" min="08:00" max="23:00" required>`));
   }
   for (const id of ["sessionStart", "sessionEnd", "personalSessionStart", "personalSessionEnd"]) {
     assert.match(html, new RegExp(`<input id="${id}" type="time"`));
