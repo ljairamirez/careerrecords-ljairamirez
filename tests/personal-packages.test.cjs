@@ -15,19 +15,29 @@ const functions = [
   "personalRateForMode", "setPersonalSuggestedRate", "updatePersonalSessionPackageOptions",
   "resetPersonalPackageLabelForStudent", "groupedPanels", "isPersonalTrainingSchedule",
   "scheduleStatusAllowsProjection", "scheduleTypeClass", "syncStudentRecords", "ensureStudent",
-  "activeStudentNames", "personalStudentNames", "studentKey", "sortNames", "sortStudentRecords"
+  "activeStudentNames", "personalStudentNames", "studentKey", "sortNames", "sortStudentRecords",
+  "editPersonalSession", "savePersonalSession", "upsert"
 ];
 
 function context(rows) {
   const controls = Object.fromEntries([
     "personalSessionStudent", "personalSessionId", "personalSessionPackageLabel",
-    "personalSessionPackageDisplay", "personalSessionClassType", "personalSessionMode", "personalSessionRate"
-  ].map((id) => [`#${id}`, { value: "" }]));
+    "personalSessionPackageDisplay", "personalSessionClassType", "personalSessionMode", "personalSessionRate",
+    "personalSessionDate", "personalSessionStart", "personalSessionEnd", "personalSessionHours", "personalSessionNotes"
+  ].map((id) => [`#${id}`, { value: "", focus() {} }]));
   const scope = {
     personalDefaultsKey: "",
     state: { sessions: [], personalSessions: rows },
     $: (selector) => controls[selector],
     normalizeMode: (mode) => String(mode).toLowerCase(),
+    normalizeModeLabel: (mode) => mode,
+    window: { confirm: () => true },
+    location: { hash: "" },
+    uid: () => "new-personal-log",
+    resetPersonalSessionForm: () => {},
+    hydrateControls: () => {},
+    saveState: () => {},
+    render: () => {},
     escapeHtml: (value) => String(value),
     formatDate: (value) => value,
     dayName: () => "Monday",
@@ -106,6 +116,41 @@ test("editing an older log does not replace its package, mode, rate or class typ
   assert.equal(controls["#personalSessionRate"].value, 350);
   assert.equal(controls["#personalSessionMode"].value, "Virtual");
   assert.equal(controls["#personalSessionClassType"].value, "College");
+});
+
+test("saving a personal rate edit updates only that log and preserves its claim details", () => {
+  const { scope, controls } = context([
+    row("PACKAGE 1", "Claimed", "2026-11-08", {
+      id: "selected", mode: "F2F", hours: 3, rate: 450, totalPay: 1350,
+      claimed: true, claimDate: "2026-11-09"
+    }),
+    row("PACKAGE 1", "Claimed", "2026-11-07", { id: "other", mode: "F2F", rate: 450 })
+  ]);
+  const other = JSON.stringify(scope.state.personalSessions[1]);
+  scope.editPersonalSession("selected");
+  controls["#personalSessionRate"].value = "512.50";
+  scope.savePersonalSession({ preventDefault() {} });
+  const edited = scope.state.personalSessions[0];
+  assert.equal(edited.rate, 512.50);
+  assert.equal(edited.totalPay, 1537.50);
+  assert.equal(edited.packageLabel, "PACKAGE 1");
+  assert.equal(edited.status, "Claimed");
+  assert.equal(edited.claimed, true);
+  assert.equal(edited.claimDate, "2026-11-09");
+  assert.equal(JSON.stringify(scope.state.personalSessions[1]), other);
+  assert.equal(scope.personalRateForMode("F2F"), 450);
+});
+
+test("new personal logs keep automatic suggestions but honor an explicit zero rate", () => {
+  for (const [mode, enteredRate, expected] of [["F2F", "", 450], ["Virtual", "", 400], ["Virtual", "0", 0]]) {
+    const { scope, controls } = context([]);
+    controls["#personalSessionMode"].value = mode;
+    controls["#personalSessionRate"].value = enteredRate;
+    controls["#personalSessionHours"].value = "2";
+    scope.savePersonalSession({ preventDefault() {} });
+    assert.equal(scope.state.personalSessions[0].rate, expected);
+    assert.equal(scope.state.personalSessions[0].totalPay, expected * 2);
+  }
 });
 
 test("current package subtotals include pending and closed logs but exclude collected and cancelled pay", () => {

@@ -3863,8 +3863,9 @@ function savePersonalSession(event) {
   const selectedPackageLabel = $("#personalSessionPackageLabel").value.trim() || existing?.packageLabel || existing?.packageName || "";
   const packageLabel = nextPersonalPackageLabel(selectedPackageLabel, { editing: Boolean(existing) });
   const automaticRate = personalRateForMode($("#personalSessionMode").value);
-  const rate = Number((automaticRate === "" ? $("#personalSessionRate").value : automaticRate) || 0);
+  const rate = Number($("#personalSessionRate").value || automaticRate || 0);
   const session = {
+    ...existing,
     id,
     date: $("#personalSessionDate").value,
     start: $("#personalSessionStart").value,
@@ -3881,7 +3882,7 @@ function savePersonalSession(event) {
     rate,
     totalPay: hours * rate,
     status: existing?.status || "Pending",
-    claimDate: "",
+    claimDate: existing?.claimDate || "",
     notes: $("#personalSessionNotes").value.trim(),
     personal: true
   };
@@ -4104,6 +4105,7 @@ function editPersonalSession(id) {
   $("#personalSessionHours").value = totalHours(session) || "";
   $("#personalSessionNotes").value = session.notes || "";
   location.hash = "#personal-sessions";
+  $("#personalSessionRate").focus();
 }
 
 function editRecord(id) {
