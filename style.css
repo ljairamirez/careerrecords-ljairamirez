@@ -1387,6 +1387,20 @@ tbody tr.college-session:not(.group-session) td:first-child {
   touch-action: pan-x pan-y;
 }
 
+.schedule-week-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.schedule-week-control input {
+  width: 154px;
+  min-width: 0;
+}
+
 .week-grid {
   display: grid;
   position: relative;

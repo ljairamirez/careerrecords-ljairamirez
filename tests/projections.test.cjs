@@ -9,7 +9,7 @@ const names = [
   "localIsoDate", "isoToLocalDate", "dayName", "timeToDecimal", "computeHours",
   "scheduleMinutes", "scheduleOccurrenceThisWeek", "scheduleOccurrenceOnDate", "nextOneTimeOccurrence",
   "isOneTimeSchedule", "oneTimeScheduleIsLapsed", "activeScheduleItems", "isPersonalTrainingSchedule",
-  "scheduleStatusAllowsProjection", "scheduledProjectionForMonth", "currentMonthToDateSessions",
+  "isWorkSchedule", "scheduleStatusAllowsProjection", "scheduledProjectionForMonth", "currentMonthToDateSessions",
   "sum", "totalHours", "totalPay", "summarize", "currentMonthEarningsProjection"
 ];
 
@@ -47,6 +47,7 @@ test("November uses logged earnings plus remaining calendar sessions, not a two-
     weekly("Monday"), weekly("Thursday"), once("2026-11-12", { end: "20:00" }),
     once("2026-10-15"), once("2026-12-10"), once("2026-11-02"),
     weekly("Friday", { student: "GYM - AF", personalTraining: true }),
+    weekly("Friday", { student: "WORK", start: "08:00", end: "17:00" }),
     weekly("Tuesday", { status: "Inactive" })
   ], sessions);
   const projected = scope.currentMonthEarningsProjection(range, 300, now);

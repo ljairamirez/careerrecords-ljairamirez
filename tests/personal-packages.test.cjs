@@ -16,7 +16,7 @@ const functions = [
   "resetPersonalPackageLabelForStudent", "groupedPanels", "isPersonalTrainingSchedule",
   "scheduleStatusAllowsProjection", "scheduleTypeClass", "syncStudentRecords", "ensureStudent",
   "activeStudentNames", "personalStudentNames", "studentKey", "sortNames", "sortStudentRecords",
-  "editPersonalSession", "savePersonalSession", "upsert"
+  "editPersonalSession", "savePersonalSession", "upsert", "isWorkSchedule"
 ];
 
 function context(rows) {

@@ -23,6 +23,7 @@ const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
 const REQUESTED_SCHEDULE_VERSION = 5;
+const WORK_SCHEDULE_TIME_VERSION = 1;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
@@ -972,7 +973,9 @@ function loadState() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const storedState = migrateState(JSON.parse(stored));
-      return currentSeed && currentMonthSessionHistoryIsAhead(currentSeed, storedState) ? currentSeed : storedState;
+      const selected = currentSeed && currentMonthSessionHistoryIsAhead(currentSeed, storedState) ? currentSeed : storedState;
+      if (selected.workScheduleTimeMigrationPending) localStorage.setItem(STORAGE_KEY, JSON.stringify(selected));
+      return selected;
     }
   } catch (error) {
     console.warn("Could not load saved Salary Sheet data.", error);
@@ -1140,10 +1143,12 @@ function ensureRequestedWeeklySchedules(targetState, deletedScheduleIds) {
 
 function consumePendingStateMigration(targetState) {
   const pending = targetState?.schedulePresetMigrationPending === true ||
+    targetState?.workScheduleTimeMigrationPending === true ||
     targetState?.personalPackageMergePending === true ||
     targetState?.billReadingCarryPending === true;
   if (targetState) {
     delete targetState.schedulePresetMigrationPending;
+    delete targetState.workScheduleTimeMigrationPending;
     delete targetState.personalPackageMergePending;
     delete targetState.billReadingCarryPending;
   }
@@ -1164,6 +1169,26 @@ function ensurePersonalPackageMerges(targetState) {
   });
   targetState.personalPackageMergeVersion = PERSONAL_PACKAGE_MERGE_VERSION;
   if (changed) targetState.personalPackageMergePending = true;
+  return changed;
+}
+
+function isWorkSchedule(item) {
+  return /^WORK$/i.test(String(item?.student || "").trim());
+}
+
+function ensureWorkScheduleTimes(targetState) {
+  if (Number(targetState.workScheduleTimeVersion || 0) >= WORK_SCHEDULE_TIME_VERSION) return false;
+  const work = (targetState.schedules || []).filter(isWorkSchedule);
+  if (!work.length) return false;
+  let changed = false;
+  work.forEach((item) => {
+    if (item.start === "08:00" && item.end === "17:00") return;
+    item.start = "08:00";
+    item.end = "17:00";
+    changed = true;
+  });
+  targetState.workScheduleTimeVersion = WORK_SCHEDULE_TIME_VERSION;
+  if (changed) targetState.workScheduleTimeMigrationPending = true;
   return changed;
 }
 
@@ -1282,6 +1307,7 @@ function migrateState(inputState) {
     occurrenceDate: item.occurrenceDate || ""
   }));
   next.rates = (next.rates || []).map((rate) => ({ ...rate, mode: normalizeModeLabel(rate.mode) }));
+  ensureWorkScheduleTimes(next);
   return next;
 }
 
@@ -1820,6 +1846,7 @@ function setupForms() {
   $("#sessionClaimPackage")?.addEventListener("change", () => applySessionDefaults($("#sessionClaimPackage").value));
   setupScheduleDayControls();
   setupScheduleTimeControls();
+  $("#scheduleWeekDate")?.addEventListener("change", renderWeekly);
 
   $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
   $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
@@ -2090,7 +2117,7 @@ function isOneTimeSchedule(item) {
 }
 
 function scheduleStatusAllowsProjection(item) {
-  if (isPersonalTrainingSchedule(item)) return false;
+  if (isPersonalTrainingSchedule(item) || isWorkSchedule(item)) return false;
   const status = String(item?.status || "Active").toLowerCase();
   return status === "active" || status === "one-time";
 }
@@ -2710,7 +2737,27 @@ function renderSchedule() {
   );
 }
 
+function scheduleWeekWindow(baseDate = new Date()) {
+  const start = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return { start: localIsoDate(start), end: localIsoDate(end) };
+}
+
+function weeklyScheduleItems(range) {
+  return (state.schedules || [])
+    .filter((item) => item.status !== "Inactive" && item.start && item.end)
+    .filter((item) => !isOneTimeSchedule(item) || !item.occurrenceDate ||
+      (item.occurrenceDate >= range.start && item.occurrenceDate <= range.end))
+    .map((item) => isOneTimeSchedule(item) && item.occurrenceDate
+      ? { ...item, day: dayName(item.occurrenceDate) } : item);
+}
+
 function renderWeekly() {
+  const weekInput = $("#scheduleWeekDate");
+  const range = scheduleWeekWindow(weekInput?.value ? isoToLocalDate(weekInput.value) : new Date());
+  if (weekInput) weekInput.value = range.start;
   const startHour = 7;
   const endHour = 23;
   const pixelsPerHour = 56;
@@ -2721,9 +2768,7 @@ function renderWeekly() {
   }).join("");
   const dayHeads = days.map((day, index) => `<div class="week-day-head" style="grid-column:${index + 2};grid-row:1">${day}</div>`).join("");
   const hourLines = Array.from({ length: rows }, (_, index) => `<div class="hour-line" style="grid-column:1 / 9;grid-row:${index + 2}"></div>`).join("");
-  const scheduleItems = activeScheduleItems()
-    .filter((item) => item.status !== "Inactive")
-    .filter((item) => item.start && item.end);
+  const scheduleItems = weeklyScheduleItems(range);
   const dayLanes = days.map((day, index) => {
     const blocks = scheduleBlocksForDay(scheduleItems.filter((item) => item.day === day), startHour, endHour, pixelsPerHour);
     return `<div class="week-day-lane" style="grid-column:${index + 2};grid-row:2 / ${rows + 2}">${blocks}</div>`;
@@ -2741,20 +2786,39 @@ function scheduleBlocksForDay(items, startHour, endHour, pixelsPerHour) {
     return { item, start, end };
   }).filter(Boolean).sort((a, b) => a.start - b.start || a.end - b.end);
 
-  const columnEnds = [];
+  // Size each connected overlap group independently, not the whole day.
+  let group = [];
+  let groupEnd = -Infinity;
+  const finishGroup = () => {
+    const columnEnds = [];
+    group.forEach((block) => {
+      let column = columnEnds.findIndex((end) => end <= block.start);
+      if (column < 0) column = columnEnds.length;
+      columnEnds[column] = block.end;
+      block.column = column;
+    });
+    group.forEach((block) => {
+      block.columns = columnEnds.length;
+      block.span = 1;
+      for (let column = block.column + 1; column < block.columns; column += 1) {
+        if (group.some((other) => other.column === column && other.start < block.end && block.start < other.end)) break;
+        block.span += 1;
+      }
+    });
+    group = [];
+    groupEnd = -Infinity;
+  };
   blocks.forEach((block) => {
-    let column = columnEnds.findIndex((end) => end <= block.start);
-    if (column < 0) column = columnEnds.length;
-    columnEnds[column] = block.end;
-    block.column = column;
+    if (block.start >= groupEnd) finishGroup();
+    group.push(block);
+    groupEnd = Math.max(groupEnd, block.end);
   });
-
-  const columnCount = Math.max(1, columnEnds.length);
+  finishGroup();
   return blocks.map((block) => {
     const top = (block.start - startHour) * pixelsPerHour;
     const height = Math.max(34, (block.end - block.start) * pixelsPerHour - 4);
-    const left = `calc(${(block.column / columnCount) * 100}% + 6px)`;
-    const width = `calc(${100 / columnCount}% - 12px)`;
+    const left = `calc(${(block.column / block.columns) * 100}% + 6px)`;
+    const width = `calc(${(block.span / block.columns) * 100}% - 12px)`;
     return `<div class="schedule-block ${isPersonalTrainingSchedule(block.item) ? "" : normalizeMode(block.item.mode)} ${scheduleTypeClass(block.item)}" style="top:${top}px;height:${height}px;left:${left};right:auto;width:${width}"><strong>${escapeHtml(block.item.student)}</strong><span>${escapeHtml(formatScheduleTimeRange(block.item.start, block.item.end))}</span></div>`;
   }).join("");
 }

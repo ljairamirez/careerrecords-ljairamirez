@@ -1,0 +1,95 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+const vm = require("node:vm");
+
+const source = fs.readFileSync(path.join(__dirname, "../script.js"), "utf8").replace(/\r\n/g, "\n");
+function context(state = { schedules: [] }) {
+  const scope = vm.createContext({
+    state, WORK_SCHEDULE_TIME_VERSION: 1,
+    escapeHtml: (value) => String(value),
+    normalizeMode: () => "",
+    scheduleTypeClass: () => "",
+    isPersonalTrainingSchedule: () => false,
+    formatScheduleTimeRange: (start, end) => `${start} - ${end}`
+  });
+  for (const name of [
+    "localIsoDate", "isoToLocalDate", "dayName", "timeToDecimal", "isOneTimeSchedule",
+    "isWorkSchedule", "ensureWorkScheduleTimes", "consumePendingStateMigration",
+    "scheduleWeekWindow", "weeklyScheduleItems", "scheduleBlocksForDay"
+  ]) {
+    const start = source.indexOf(`function ${name}(`);
+    const end = source.indexOf("\nfunction ", start + 1);
+    assert(start >= 0, name);
+    vm.runInContext(source.slice(start, end), scope);
+  }
+  return scope;
+}
+
+const item = (student, start, end, extra = {}) => ({
+  student, start, end, day: "Friday", frequency: "Weekly", status: "Active", ...extra
+});
+
+function widths(scope, rows) {
+  const html = scope.scheduleBlocksForDay(rows, 7, 23, 56);
+  return Object.fromEntries([...html.matchAll(/width:calc\(([\d.]+)% - 12px\)"><strong>([^<]+)/g)]
+    .map((match) => [match[2], Number(match[1])]));
+}
+
+test("only connected overlapping times share width; later sessions stay full-width", () => {
+  const rows = [item("A", "08:00", "09:00"), item("B", "08:30", "09:30"),
+    item("Afternoon", "17:30", "19:00"), item("Evening", "20:00", "22:00")];
+  const snapshot = JSON.stringify(rows);
+  assert.deepEqual(widths(context(), rows), { A: 50, B: 50, Afternoon: 100, Evening: 100 });
+  assert.equal(JSON.stringify(rows), snapshot);
+});
+
+test("touching sessions do not overlap, and free columns expand after a triple overlap", () => {
+  const scope = context();
+  assert.deepEqual(widths(scope, [item("A", "08:00", "09:00"), item("B", "09:00", "10:00")]), { A: 100, B: 100 });
+  const result = widths(scope, [
+    item("Long", "08:00", "12:00"), item("B", "09:00", "10:00"),
+    item("C", "09:15", "09:45"), item("D", "10:00", "11:00")
+  ]);
+  assert(Math.abs(result.Long - 100 / 3) < 0.0001);
+  assert(Math.abs(result.D - 200 / 3) < 0.0001);
+});
+
+test("one-time sessions on separate dates stay in their own selectable weeks", () => {
+  const rows = [
+    item("This Friday", "20:00", "22:00", { frequency: "One-time", occurrenceDate: "2026-11-20", day: "Monday" }),
+    item("Next Friday", "20:00", "22:00", { frequency: "One-time", occurrenceDate: "2026-11-27" })
+  ];
+  const scope = context({ schedules: rows });
+  const snapshot = JSON.stringify(rows);
+  const range = scope.scheduleWeekWindow(new Date(2026, 10, 20));
+  assert.equal(range.start, "2026-11-16");
+  assert.equal(range.end, "2026-11-22");
+  const thisWeek = scope.weeklyScheduleItems(range);
+  assert.equal(thisWeek.length, 1);
+  assert.equal(thisWeek[0].day, "Friday");
+  assert.deepEqual(widths(scope, thisWeek), { "This Friday": 100 });
+  const nextWeek = scope.weeklyScheduleItems({ start: "2026-11-23", end: "2026-11-29" });
+  assert.deepEqual(widths(scope, nextWeek), { "Next Friday": 100 });
+  assert.equal(JSON.stringify(rows), snapshot);
+});
+
+test("WORK is corrected once to 8 AM–5 PM without altering logs or other schedules", () => {
+  const state = {
+    schedules: [item("WORK", "20:00", "17:00"), item("Tutor", "20:00", "22:00")],
+    sessions: [{ id: "historical", hours: 2, rate: 300 }], personalSessions: [{ id: "personal", rate: 450 }]
+  };
+  const protectedData = JSON.stringify([state.sessions, state.personalSessions, state.schedules[1]]);
+  const scope = context(state);
+  assert.equal(scope.ensureWorkScheduleTimes(state), true);
+  assert.equal(state.schedules[0].start, "08:00");
+  assert.equal(state.schedules[0].end, "17:00");
+  assert.equal(scope.consumePendingStateMigration(state), true);
+  assert.equal(scope.consumePendingStateMigration(state), false);
+  assert.equal(JSON.stringify([state.sessions, state.personalSessions, state.schedules[1]]), protectedData);
+  assert.deepEqual(widths(scope, state.schedules), { WORK: 100, Tutor: 100 });
+  state.schedules[0].start = "09:00";
+  assert.equal(scope.ensureWorkScheduleTimes(state), false);
+  assert.equal(state.schedules[0].start, "09:00");
+});
