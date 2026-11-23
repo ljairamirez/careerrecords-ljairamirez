@@ -8,8 +8,9 @@ const source = fs.readFileSync(path.join(__dirname, "../script.js"), "utf8").rep
 function context(state = { schedules: [] }) {
   const controls = Object.fromEntries([
     "scheduleId", "scheduleWeekDate", "scheduleStart", "scheduleEnd", "scheduleStudent",
-    "scheduleTutor", "scheduleMode", "scheduleFrequency", "scheduleNotes"
+    "scheduleTutor", "scheduleMode", "scheduleFrequency", "scheduleNotes", "scheduleOccurrenceDate"
   ].map((id) => [`#${id}`, { value: "" }]));
+  let nextId = 0;
   const scope = vm.createContext({
     state, WORK_SCHEDULE_TIME_VERSION: 2,
     controls, selectedDays: ["Monday"],
@@ -21,7 +22,7 @@ function context(state = { schedules: [] }) {
     normalizeStudentName: (name) => name,
     normalizeModeLabel: (mode) => mode,
     ensureStudent: () => {},
-    uid: () => "new-schedule",
+    uid: () => `new-schedule-${++nextId}`,
     resetScheduleForm: () => {},
     saveState: () => {},
     hydrateControls: () => {},
@@ -38,7 +39,8 @@ function context(state = { schedules: [] }) {
     "localIsoDate", "isoToLocalDate", "dayName", "timeToDecimal", "isOneTimeSchedule",
     "isWorkSchedule", "ensureWorkScheduleTimes", "consumePendingStateMigration",
     "scheduleWeekWindow", "weeklyScheduleItems", "scheduleBlocksForDay",
-    "scheduleMinutes", "scheduleOccurrenceThisWeek", "saveSchedule", "editSchedule", "upsert"
+    "scheduleMinutes", "scheduleOccurrenceThisWeek", "saveSchedule", "editSchedule", "upsert",
+    "syncScheduleDateField", "syncScheduleDateWithDays"
   ]) {
     const start = source.indexOf(`function ${name}(`);
     const end = source.indexOf("\nfunction ", start + 1);
@@ -171,6 +173,7 @@ test("editing a December session keeps its date and metadata, without changing o
   scope.controls["#scheduleWeekDate"].value = "2026-11-23";
   scope.editSchedule("december");
   assert.equal(scope.controls["#scheduleWeekDate"].value, "2026-12-07");
+  assert.equal(scope.controls["#scheduleOccurrenceDate"].value, "2026-12-08");
   scope.controls["#scheduleEnd"].value = "20:00";
   scope.saveSchedule({ preventDefault() {} });
   assert.equal(state.schedules[0].occurrenceDate, "2026-12-08");
@@ -189,4 +192,51 @@ test("future dates work across the year boundary and recurring sessions remain u
   recurring.saveSchedule({ preventDefault() {} });
   assert.equal(recurring.state.schedules[0].frequency, "Weekly");
   assert.equal(recurring.state.schedules[0].occurrenceDate, "");
+});
+
+test("Date is enabled and required only for One-time", () => {
+  const scope = context();
+  fillSchedule(scope, { week: "2026-11-30", day: "Wednesday", frequency: "Weekly" });
+  scope.syncScheduleDateField();
+  const input = scope.controls["#scheduleOccurrenceDate"];
+  assert.equal(input.disabled, true);
+  assert.equal(input.required, false);
+  scope.controls["#scheduleFrequency"].value = "One-time";
+  scope.syncScheduleDateField();
+  assert.equal(input.disabled, false);
+  assert.equal(input.required, true);
+  assert.equal(input.value, "2026-12-02");
+  scope.selectedDays = ["Thursday"];
+  scope.syncScheduleDateWithDays();
+  assert.equal(input.value, "2026-12-03");
+  scope.controls["#scheduleFrequency"].value = "Weekly";
+  scope.syncScheduleDateField();
+  assert.equal(input.disabled, true);
+  assert.equal(input.required, false);
+  assert.equal(input.value, "");
+});
+
+test("an explicit date reschedules only the edited entry and sets the correct weekday", () => {
+  const scope = context({ schedules: [
+    item("TRIO, Mia-Parker-Vikka", "18:00", "20:00", { id: "trio", day: "Tuesday", frequency: "One-time", occurrenceDate: "2026-11-24" }),
+    item("Other", "18:00", "20:00", { id: "other" })
+  ] });
+  scope.editSchedule("trio");
+  scope.controls["#scheduleOccurrenceDate"].value = "2026-12-03";
+  scope.saveSchedule({ preventDefault() {} });
+  assert.equal(scope.state.schedules[0].occurrenceDate, "2026-12-03");
+  assert.equal(scope.state.schedules[0].day, "Thursday");
+  assert.equal(scope.state.schedules[0].start, "18:00");
+  assert.equal(scope.state.schedules[0].end, "20:00");
+  assert.equal(scope.state.schedules[1].id, "other");
+  assert.equal(scope.state.schedules[1].occurrenceDate, undefined);
+});
+
+test("multiple one-time weekdays use the week of the entered date", () => {
+  const scope = context();
+  fillSchedule(scope, { week: "2026-11-23", day: "Tuesday" });
+  scope.controls["#scheduleOccurrenceDate"].value = "2026-12-01";
+  scope.selectedDays = ["Tuesday", "Thursday"];
+  scope.saveSchedule({ preventDefault() {} });
+  assert.deepEqual(scope.state.schedules.map((item) => item.occurrenceDate), ["2026-12-01", "2026-12-03"]);
 });

@@ -1851,7 +1851,18 @@ function setupForms() {
   $("#sessionClaimPackage")?.addEventListener("change", () => applySessionDefaults($("#sessionClaimPackage").value));
   setupScheduleDayControls();
   setupScheduleTimeControls();
-  $("#scheduleWeekDate")?.addEventListener("change", renderWeekly);
+  $("#scheduleWeekDate")?.addEventListener("change", () => {
+    renderWeekly();
+    syncScheduleDateWithDays();
+  });
+  $("#scheduleFrequency")?.addEventListener("change", syncScheduleDateField);
+  $("#scheduleOccurrenceDate")?.addEventListener("change", () => {
+    const date = $("#scheduleOccurrenceDate").value;
+    if (!date) return;
+    setScheduleDays([dayName(date)]);
+    $("#scheduleWeekDate").value = scheduleWeekWindow(isoToLocalDate(date)).start;
+    renderWeekly();
+  });
 
   $("#personalSessionStudent")?.addEventListener("input", resetPersonalPackageLabelForStudent);
   $("#personalSessionStudent")?.addEventListener("change", resetPersonalPackageLabelForStudent);
@@ -4038,7 +4049,10 @@ function saveRate(event) {
 function saveSchedule(event) {
   event.preventDefault();
   const existing = state.schedules.find((item) => item.id === $("#scheduleId").value);
-  const scheduleDays = selectedScheduleDays();
+  const explicitDate = $("#scheduleOccurrenceDate")?.value || "";
+  const oneTime = isOneTimeSchedule({ frequency: $("#scheduleFrequency").value });
+  const selectedDays = selectedScheduleDays();
+  const scheduleDays = oneTime && explicitDate && selectedDays.length <= 1 ? [dayName(explicitDate)] : selectedDays;
   if (!scheduleDays.length) {
     window.alert("Select at least one schedule day.");
     return;
@@ -4055,7 +4069,7 @@ function saveSchedule(event) {
     tutor: $("#scheduleTutor").value,
     mode: $("#scheduleMode").value ? normalizeModeLabel($("#scheduleMode").value) : "",
     frequency: $("#scheduleFrequency").value,
-    status: existing?.status || "Active",
+    status: existing?.status === "One-time" ? "Active" : existing?.status || "Active",
     personalTraining: existing?.personalTraining === true || isPersonalTrainingSchedule({ student: $("#scheduleStudent").value }),
     notes: $("#scheduleNotes").value.trim(),
     createdAt: existing?.createdAt || new Date().toISOString()
@@ -4067,7 +4081,7 @@ function saveSchedule(event) {
   }
   if (!scheduleBase.personalTraining) ensureStudent(scheduleBase.student, "schedule");
   const selectedWeek = $("#scheduleWeekDate")?.value;
-  const baseDate = selectedWeek
+  const baseDate = oneTime && explicitDate ? isoToLocalDate(explicitDate) : selectedWeek
     ? isoToLocalDate(selectedWeek)
     : existing?.occurrenceDate ? isoToLocalDate(existing.occurrenceDate) : new Date();
   scheduleDays.forEach((day) => {
@@ -4223,7 +4237,9 @@ function editSchedule(id) {
   $("#scheduleStudent").value = item.student;
   $("#scheduleTutor").value = item.tutor;
   $("#scheduleMode").value = item.mode;
-  $("#scheduleFrequency").value = item.frequency;
+  $("#scheduleFrequency").value = isOneTimeSchedule(item) ? "One-time" : item.frequency;
+  $("#scheduleOccurrenceDate").value = item.occurrenceDate || "";
+  syncScheduleDateField();
   if ($("#scheduleStatus")) $("#scheduleStatus").value = item.status || "Active";
   $("#scheduleNotes").value = item.notes || "";
 }
@@ -5037,6 +5053,30 @@ function fillScheduleTimeOptions(control, selected = "") {
   select.value = selected;
 }
 
+function syncScheduleDateField() {
+  const input = $("#scheduleOccurrenceDate");
+  if (!input) return;
+  const oneTime = isOneTimeSchedule({ frequency: $("#scheduleFrequency")?.value });
+  input.disabled = !oneTime;
+  input.required = oneTime;
+  if (!oneTime) {
+    input.value = "";
+    return;
+  }
+  if (!input.value) {
+    const baseDate = $("#scheduleWeekDate")?.value ? isoToLocalDate($("#scheduleWeekDate").value) : new Date();
+    const day = selectedScheduleDays()[0] || dayName(localIsoDate(baseDate));
+    input.value = scheduleOccurrenceThisWeek({ day, start: "00:00", end: "01:00" }, baseDate)?.date || "";
+  }
+}
+
+function syncScheduleDateWithDays() {
+  const input = $("#scheduleOccurrenceDate");
+  if (!input || input.disabled) return;
+  input.value = "";
+  syncScheduleDateField();
+}
+
 function resetScheduleForm() {
   $("#scheduleForm").reset();
   $("#scheduleId").value = "";
@@ -5046,6 +5086,7 @@ function resetScheduleForm() {
   $("#scheduleStudent").value = "";
   $("#scheduleMode").value = "";
   $("#scheduleFrequency").value = "";
+  syncScheduleDateField();
   if ($("#scheduleStatus")) $("#scheduleStatus").value = "";
 }
 
@@ -5056,8 +5097,12 @@ function setupScheduleDayControls() {
       if (weekdays.includes(input.value)) input.checked = checked;
     });
     syncScheduleWeekdayToggle();
+    syncScheduleDateWithDays();
   });
-  $$('[data-schedule-day]').forEach((input) => input.addEventListener("change", syncScheduleWeekdayToggle));
+  $$('[data-schedule-day]').forEach((input) => input.addEventListener("change", () => {
+    syncScheduleWeekdayToggle();
+    syncScheduleDateWithDays();
+  }));
 }
 
 function selectedScheduleDays() {
