@@ -6,8 +6,28 @@ const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../script.js"), "utf8").replace(/\r\n/g, "\n");
 function context(state = { schedules: [] }) {
+  const controls = Object.fromEntries([
+    "scheduleId", "scheduleWeekDate", "scheduleStart", "scheduleEnd", "scheduleStudent",
+    "scheduleTutor", "scheduleMode", "scheduleFrequency", "scheduleNotes"
+  ].map((id) => [`#${id}`, { value: "" }]));
   const scope = vm.createContext({
     state, WORK_SCHEDULE_TIME_VERSION: 2,
+    controls, selectedDays: ["Monday"],
+    $: (selector) => controls[selector],
+    window: { confirm: () => true, alert: (message) => { throw new Error(message); } },
+    selectedScheduleDays: () => scope.selectedDays,
+    setScheduleDays: (days) => { scope.selectedDays = days; },
+    fillScheduleTimeOptions: (control, value) => { control.value = value; },
+    normalizeStudentName: (name) => name,
+    normalizeModeLabel: (mode) => mode,
+    ensureStudent: () => {},
+    uid: () => "new-schedule",
+    resetScheduleForm: () => {},
+    saveState: () => {},
+    hydrateControls: () => {},
+    render: () => {},
+    renderWeekly: () => {},
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     escapeHtml: (value) => String(value),
     normalizeMode: () => "",
     scheduleTypeClass: () => "",
@@ -17,7 +37,8 @@ function context(state = { schedules: [] }) {
   for (const name of [
     "localIsoDate", "isoToLocalDate", "dayName", "timeToDecimal", "isOneTimeSchedule",
     "isWorkSchedule", "ensureWorkScheduleTimes", "consumePendingStateMigration",
-    "scheduleWeekWindow", "weeklyScheduleItems", "scheduleBlocksForDay"
+    "scheduleWeekWindow", "weeklyScheduleItems", "scheduleBlocksForDay",
+    "scheduleMinutes", "scheduleOccurrenceThisWeek", "saveSchedule", "editSchedule", "upsert"
   ]) {
     const start = source.indexOf(`function ${name}(`);
     const end = source.indexOf("\nfunction ", start + 1);
@@ -120,4 +141,52 @@ test("only Tuesday–Friday WORK changes to 7:30 AM–4:30 PM in the new update"
   state.schedules[1].start = "08:30";
   assert.equal(scope.ensureWorkScheduleTimes(state), false);
   assert.equal(state.schedules[1].start, "08:30");
+});
+
+function fillSchedule(scope, { week, day, frequency = "One-time" }) {
+  const values = {
+    scheduleWeekDate: week, scheduleStart: "18:00", scheduleEnd: "19:00",
+    scheduleStudent: "Test class", scheduleTutor: "Lloyd Ramirez",
+    scheduleMode: "Virtual", scheduleFrequency: frequency
+  };
+  Object.entries(values).forEach(([id, value]) => { scope.controls[`#${id}`].value = value; });
+  scope.selectedDays = [day];
+}
+
+test("a December one-time session is saved into the chosen future week", () => {
+  const scope = context();
+  fillSchedule(scope, { week: "2026-11-30", day: "Wednesday" });
+  scope.saveSchedule({ preventDefault() {} });
+  assert.equal(scope.state.schedules[0].occurrenceDate, "2026-12-02");
+});
+
+test("editing a December session keeps its date and metadata, without changing other records", () => {
+  const target = item("December class", "18:00", "19:00", {
+    id: "december", day: "Tuesday", frequency: "One-time", occurrenceDate: "2026-12-08",
+    tutor: "Lloyd Ramirez", mode: "Virtual", notes: "Keep this", source: "manual"
+  });
+  const state = { schedules: [target, item("Other", "08:00", "09:00")], sessions: [{ id: "log", rate: 550 }] };
+  const snapshot = JSON.stringify([state.schedules[1], state.sessions]);
+  const scope = context(state);
+  scope.controls["#scheduleWeekDate"].value = "2026-11-23";
+  scope.editSchedule("december");
+  assert.equal(scope.controls["#scheduleWeekDate"].value, "2026-12-07");
+  scope.controls["#scheduleEnd"].value = "20:00";
+  scope.saveSchedule({ preventDefault() {} });
+  assert.equal(state.schedules[0].occurrenceDate, "2026-12-08");
+  assert.equal(state.schedules[0].end, "20:00");
+  assert.equal(state.schedules[0].source, "manual");
+  assert.equal(JSON.stringify([state.schedules[1], state.sessions]), snapshot);
+});
+
+test("future dates work across the year boundary and recurring sessions remain undated", () => {
+  const scope = context();
+  fillSchedule(scope, { week: "2026-12-28", day: "Friday" });
+  scope.saveSchedule({ preventDefault() {} });
+  assert.equal(scope.state.schedules[0].occurrenceDate, "2027-01-01");
+  const recurring = context();
+  fillSchedule(recurring, { week: "2027-01-04", day: "Monday", frequency: "Weekly" });
+  recurring.saveSchedule({ preventDefault() {} });
+  assert.equal(recurring.state.schedules[0].frequency, "Weekly");
+  assert.equal(recurring.state.schedules[0].occurrenceDate, "");
 });

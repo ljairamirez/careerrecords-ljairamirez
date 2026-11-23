@@ -2717,7 +2717,7 @@ function renderSchedule() {
     const statusText = lapsedOneTime ? "Done" : item.status;
     const personalTraining = isPersonalTrainingSchedule(item);
     return `<tr class="${personalTraining ? "personal-training-row" : ""} ${lapsedOneTime ? "lapsed-one-time-row" : ""}">
-      <td>${escapeHtml(item.day)}</td>
+      <td>${escapeHtml(item.day)}${isOneTimeSchedule(item) && item.occurrenceDate ? `<br><small>${escapeHtml(formatDate(item.occurrenceDate))}</small>` : ""}</td>
       <td>${escapeHtml(formatScheduleTimeRange(item.start, item.end))}</td>
       <td>${escapeHtml(item.student)}</td>
       <td>${personalTraining ? '<span class="mode-badge personal-training-badge">Personal training</span>' : `<span class="mode-badge ${normalizeMode(item.mode)}">${escapeHtml(item.mode)}</span>`}</td>
@@ -4066,14 +4066,18 @@ function saveSchedule(event) {
     scheduleBase.mode = "";
   }
   if (!scheduleBase.personalTraining) ensureStudent(scheduleBase.student, "schedule");
-  const baseDate = new Date();
+  const selectedWeek = $("#scheduleWeekDate")?.value;
+  const baseDate = selectedWeek
+    ? isoToLocalDate(selectedWeek)
+    : existing?.occurrenceDate ? isoToLocalDate(existing.occurrenceDate) : new Date();
   scheduleDays.forEach((day) => {
     const draft = { ...scheduleBase, day };
     upsert("schedules", {
+      ...existing,
       id: existing ? existing.id : uid(),
       day,
       ...scheduleBase,
-      occurrenceDate: isOneTimeSchedule(draft) ? oneTimeOccurrenceDate(draft, baseDate) : ""
+      occurrenceDate: isOneTimeSchedule(draft) ? scheduleOccurrenceThisWeek(draft, baseDate)?.date || "" : ""
     });
   });
   resetScheduleForm();
@@ -4208,6 +4212,10 @@ function editRate(id) {
 function editSchedule(id) {
   const item = state.schedules.find((schedule) => schedule.id === id);
   if (!item) return;
+  if (isOneTimeSchedule(item) && item.occurrenceDate && $("#scheduleWeekDate")) {
+    $("#scheduleWeekDate").value = scheduleWeekWindow(isoToLocalDate(item.occurrenceDate)).start;
+    renderWeekly();
+  }
   $("#scheduleId").value = item.id;
   setScheduleDays([item.day]);
   fillScheduleTimeOptions($("#scheduleStart"), item.start);
