@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const source = fs.readFileSync(path.join(__dirname, "../script.js"), "utf8").replace(/\r\n/g, "\n");
 function context(state = { schedules: [] }) {
   const scope = vm.createContext({
-    state, WORK_SCHEDULE_TIME_VERSION: 1,
+    state, WORK_SCHEDULE_TIME_VERSION: 2,
     escapeHtml: (value) => String(value),
     normalizeMode: () => "",
     scheduleTypeClass: () => "",
@@ -75,9 +75,9 @@ test("one-time sessions on separate dates stay in their own selectable weeks", (
   assert.equal(JSON.stringify(rows), snapshot);
 });
 
-test("WORK is corrected once to 8 AM–5 PM without altering logs or other schedules", () => {
+test("legacy Monday WORK is corrected once without altering logs or other schedules", () => {
   const state = {
-    schedules: [item("WORK", "20:00", "17:00"), item("Tutor", "20:00", "22:00")],
+    schedules: [item("WORK", "20:00", "17:00", { day: "Monday" }), item("Tutor", "20:00", "22:00")],
     sessions: [{ id: "historical", hours: 2, rate: 300 }], personalSessions: [{ id: "personal", rate: 450 }]
   };
   const protectedData = JSON.stringify([state.sessions, state.personalSessions, state.schedules[1]]);
@@ -92,4 +92,32 @@ test("WORK is corrected once to 8 AM–5 PM without altering logs or other sched
   state.schedules[0].start = "09:00";
   assert.equal(scope.ensureWorkScheduleTimes(state), false);
   assert.equal(state.schedules[0].start, "09:00");
+});
+
+test("only Tuesday–Friday WORK changes to 7:30 AM–4:30 PM in the new update", () => {
+  const state = {
+    workScheduleTimeVersion: 1,
+    schedules: [
+      item("WORK", "08:00", "17:00", { day: "Monday", id: "mon" }),
+      ...["Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => item("WORK", "08:00", "17:00", { day, id: day })),
+      item("WORK", "09:00", "12:00", { day: "Saturday", id: "sat" }),
+      item("Tutor", "18:00", "19:00", { day: "Tuesday", id: "tutor" })
+    ],
+    sessions: [{ id: "lesson", hours: 1, rate: 550 }],
+    personalSessions: [{ id: "personal", hours: 3, rate: 350 }]
+  };
+  const untouched = JSON.stringify([state.schedules[0], ...state.schedules.slice(5), state.sessions, state.personalSessions]);
+  const scope = context(state);
+  assert.equal(scope.ensureWorkScheduleTimes(state), true);
+  for (const schedule of state.schedules.slice(1, 5)) {
+    assert.equal(schedule.start, "07:30");
+    assert.equal(schedule.end, "16:30");
+    assert.equal(schedule.id, schedule.day);
+  }
+  assert.equal(JSON.stringify([state.schedules[0], ...state.schedules.slice(5), state.sessions, state.personalSessions]), untouched);
+  assert.equal(state.workScheduleTimeVersion, 2);
+  assert.equal(scope.consumePendingStateMigration(state), true);
+  state.schedules[1].start = "08:30";
+  assert.equal(scope.ensureWorkScheduleTimes(state), false);
+  assert.equal(state.schedules[1].start, "08:30");
 });

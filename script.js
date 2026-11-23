@@ -23,7 +23,7 @@ const ATTACHMENT_STORE_NAME = "files";
 const IMPORT_STATUS_POLICY_VERSION = 2;
 const STUDENT_STATUS_POLICY_VERSION = 1;
 const REQUESTED_SCHEDULE_VERSION = 5;
-const WORK_SCHEDULE_TIME_VERSION = 1;
+const WORK_SCHEDULE_TIME_VERSION = 2;
 const PERSONAL_PACKAGE_MERGE_VERSION = 1;
 const BILL_READING_CARRY_VERSION = 1;
 const REMOVED_IMPORTED_SESSION_IDS = new Set(["wb265"]);
@@ -1177,14 +1177,19 @@ function isWorkSchedule(item) {
 }
 
 function ensureWorkScheduleTimes(targetState) {
-  if (Number(targetState.workScheduleTimeVersion || 0) >= WORK_SCHEDULE_TIME_VERSION) return false;
+  const previousVersion = Number(targetState.workScheduleTimeVersion || 0);
+  if (previousVersion >= WORK_SCHEDULE_TIME_VERSION) return false;
   const work = (targetState.schedules || []).filter(isWorkSchedule);
   if (!work.length) return false;
   let changed = false;
   work.forEach((item) => {
-    if (item.start === "08:00" && item.end === "17:00") return;
-    item.start = "08:00";
-    item.end = "17:00";
+    const revisedDay = ["Tuesday", "Wednesday", "Thursday", "Friday"].includes(item.day);
+    if (!revisedDay && previousVersion >= 1) return;
+    const start = revisedDay ? "07:30" : "08:00";
+    const end = revisedDay ? "16:30" : "17:00";
+    if (item.start === start && item.end === end) return;
+    item.start = start;
+    item.end = end;
     changed = true;
   });
   targetState.workScheduleTimeVersion = WORK_SCHEDULE_TIME_VERSION;
